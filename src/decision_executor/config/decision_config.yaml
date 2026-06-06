@@ -1,0 +1,172 @@
+topic:
+  name: /referee
+  type: sentry_msgs/msg/Referee
+map_metadata:
+  image_path: RMUC2026赛场渲染图.png
+  resolution: 0.01
+  width_pixels: 2800
+  height_pixels: 1500
+  origin_pixel:
+    - 390
+    - 695
+waypoints:
+  - name: 守护堡垒点
+    pixel:
+      - 388.29787234042556
+      - 805.0531833729846
+    world:
+      - -0.017
+      - -1.101
+  - name: 打符点
+    pixel:
+      - 1015.9574468085107
+      - 408.7765876283037
+    world:
+      - 6.26
+      - 2.862
+  - name: 巡逻点
+    pixel:
+      - 940.1595744680851
+      - 987.2340344368143
+    world:
+      - 5.502
+      - -2.922
+  - name: 补给点
+    pixel:
+      - 217.6015473887814
+      - 1291.7619064274706
+    world:
+      - -1.724
+      - -5.968
+  - name: 前哨攻击点
+    pixel:
+      - 1151.0413821769139
+      - 236.18286268512506
+    world:
+      - 7.61
+      - 4.588
+zones: []
+decision_tree:
+  root:
+    type: Selector
+    children:
+      - type: Sequence
+        priority: 1
+        children:
+          - type: Condition
+            field: game_progress
+            value_type: uint16
+            operator: '=='
+            threshold: 4
+          - type: Condition
+            field: current_hp
+            value_type: uint16
+            operator: <
+            threshold: 150
+          - type: Action
+            action: 补给点
+            exit_condition:
+              field: current_hp
+              value_type: uint16
+              operator: '>='
+              threshold: 400
+      - type: Sequence
+        priority: 2
+        children:
+          - type: Condition
+            field: game_progress
+            value_type: uint16
+            operator: '=='
+            threshold: 4
+          - type: Condition
+            field: shoot_num
+            value_type: uint16
+            operator: <=
+            threshold: 30
+          - type: Action
+            action: 补给点
+            exit_condition:
+              field: shoot_num
+              value_type: uint16
+              operator: '>='
+              threshold: 100
+      - type: Sequence
+        priority: 3
+        children:
+          - type: Condition
+            field: game_progress
+            value_type: uint16
+            operator: '=='
+            threshold: 4
+          - type: Condition
+            field: fortress_status
+            value_type: uint16
+            operator: '=='
+            threshold: 2
+          - type: Condition
+            field: vision_status
+            value_type: uint8
+            operator: '=='
+            threshold: 1
+          - type: Action
+            action: STOP
+      - type: Sequence
+        priority: 3
+        children:
+          - type: Condition
+            field: game_progress
+            value_type: uint16
+            operator: '=='
+            threshold: 4
+          - type: Condition
+            field: fortress_status
+            value_type: uint16
+            operator: '=='
+            threshold: 2
+          - type: Action
+            action: 守护堡垒点
+      - type: Sequence
+        priority: 4
+        children:
+          - type: Condition
+            field: game_progress
+            value_type: uint16
+            operator: '=='
+            threshold: 4
+          - type: Condition
+            field: rune_statues
+            value_type: uint16
+            operator: '!='
+            threshold: 2
+          - type: Action
+            action: 前哨攻击点
+          - type: Condition
+            field: vision_status
+            value_type: uint8
+            operator: '=='
+            threshold: 1
+          - type: Action
+            action: 前哨攻击点
+            actions:
+              - 前哨攻击点
+            loop: true
+      - type: Sequence
+        priority: 4
+        children:
+          - type: Condition
+            field: game_progress
+            value_type: uint16
+            operator: '=='
+            threshold: 4
+          - type: Condition
+            field: rune_statues
+            value_type: uint16
+            operator: '!='
+            threshold: 2
+          - type: Action
+            action: 前哨攻击点
+          - type: Action
+            action: 前哨攻击点
+            actions:
+              - 前哨攻击点
+            loop: true

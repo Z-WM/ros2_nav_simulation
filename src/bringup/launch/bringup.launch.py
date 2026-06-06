@@ -35,7 +35,7 @@ def generate_launch_description():
     declare_map_yaml_cmd = DeclareLaunchArgument(
         "map",
         default_value=[
-            TextSubstitution(text=os.path.join(bringup_dir, "map",  "rmuc_2025.yaml")),
+            TextSubstitution(text=os.path.join(bringup_dir, "map",  "test.yaml")),
         ],
         description="Full path to map file to load",
     )
@@ -43,13 +43,13 @@ def generate_launch_description():
     declare_params_file_cmd = DeclareLaunchArgument(
         "params_file",
         default_value=os.path.join(
-            bringup_dir, "config", "nav2_params.yaml"
+            bringup_dir, "config", "nav2_params_pid.yaml"
         ),
     )
 
     declare_rviz_config_file_cmd = DeclareLaunchArgument(
         "rviz_config",
-        default_value=os.path.join(bringup_dir, "rviz", "test.rviz"),
+        default_value=os.path.join(bringup_dir, "rviz", "rviz2_waypoint_test.rviz"),
         description="Full path to the RViz config file to use",
     )
 
@@ -64,6 +64,12 @@ def generate_launch_description():
             executable='static_transform_publisher',
             name='map_to_odom',
             arguments=['0', '0', '0', '0', '0', '0', 'map', 'odom']
+        ),
+
+        Node(
+            package='serial_interfaces',
+            executable='serial_interfaces',
+            name='serial_interfaces'
         ),
 
         IncludeLaunchDescription(
@@ -85,6 +91,26 @@ def generate_launch_description():
                     ])
                 ]),
                 launch_arguments={'use_sim_time': use_sim_time}.items()
+            ),
+
+        # IncludeLaunchDescription(
+        #         launch_description_source=PythonLaunchDescriptionSource([
+        #             PathJoinSubstitution([
+        #                 FindPackageShare('decision_executor'),
+        #                 'launch',
+        #                 'decision_executor.launch.py'
+        #             ])
+        #         ]),
+        #     ),
+
+        IncludeLaunchDescription(
+                launch_description_source=PythonLaunchDescriptionSource([
+                    PathJoinSubstitution([
+                        FindPackageShare('dynamic_message_dashboard_ros2'),
+                        'launch',
+                        'dynamic_message_dashboard_ros2.launch.py'
+                    ])
+                ]),
             ),
 
     Node(

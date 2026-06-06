@@ -1,0 +1,119 @@
+{
+    "topic_name": "test_topic",
+    "msg_package": "sentry_msgs",
+    "msg_type": "Referee",
+    "categories": {
+        "比赛进程": {
+            "color": "#007AFF"
+        },
+        "血量状态": {
+            "color": "#FF3B30"
+        },
+        "武器与视觉系统": {
+            "color": "#34C759"
+        },
+        "系统基础状态": {
+            "color": "#FF9500"
+        }
+    },
+    "parameters": {
+        "game_progress": {
+            "type": "uint8",
+            "value": 0,
+            "cat": "比赛进程",
+            "min": 0,
+            "max": 255
+        },
+        "stage_remain_time": {
+            "type": "uint16",
+            "value": 595,
+            "cat": "比赛进程",
+            "min": 0,
+            "max": 65535
+        },
+        "own_outpost_hp": {
+            "type": "uint16",
+            "value": 1500,
+            "cat": "血量状态",
+            "min": 0,
+            "max": 5000
+        },
+        "own_base_hp": {
+            "type": "uint16",
+            "value": 5000,
+            "cat": "血量状态",
+            "min": 0,
+            "max": 10000
+        },
+        "maximum_hp": {
+            "type": "uint16",
+            "value": 600,
+            "cat": "血量状态",
+            "min": 0,
+            "max": 1000
+        },
+        "current_hp": {
+            "type": "uint16",
+            "value": 600,
+            "cat": "血量状态",
+            "min": 0,
+            "max": 1000
+        },
+        "vision_status": {
+            "type": "uint8",
+            "value": 0,
+            "cat": "武器与视觉系统",
+            "min": 0,
+            "max": 10
+        },
+        "shoot_distance": {
+            "type": "uint16",
+            "value": 0,
+            "cat": "武器与视觉系统",
+            "min": 0,
+            "max": 10
+        },
+        "shoot_num": {
+            "type": "uint16",
+            "value": 0,
+            "cat": "武器与视觉系统",
+            "min": 0,
+            "max": 300
+        },
+        "obtain_shoot_num": {
+            "type": "uint16",
+            "value": 0,
+            "cat": "武器与视觉系统",
+            "min": 0,
+            "max": 1000
+        },
+        "event_data": {
+            "type": "uint32",
+            "value": 0,
+            "cat": "系统基础状态",
+            "min": 0,
+            "max": 50
+        },
+        "rfid_status": {
+            "type": "uint32",
+            "value": 0,
+            "cat": "系统基础状态",
+            "min": 0,
+            "max": 50
+        },
+        "armor_id": {
+            "type": "uint8",
+            "value": 0,
+            "cat": "系统基础状态",
+            "min": 0,
+            "max": 10
+        },
+        "hp_deduction_reason": {
+            "type": "uint8",
+            "value": 0,
+            "cat": "系统基础状态",
+            "min": 0,
+            "max": 10
+        }
+    }
+}

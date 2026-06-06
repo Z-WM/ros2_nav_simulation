@@ -1,0 +1,336 @@
+bt_navigator:
+  ros__parameters:
+    use_sim_time: True
+    global_frame: map
+    robot_base_frame: base_footprint
+    odom_topic: /odom
+    bt_loop_duration: 10
+    default_server_timeout: 20
+    # default_nav_to_pose_bt_xml: /home/z/mid360_simulation/src/bringup/behavior_tree/navigate_to_pose_w_replanning_and_recovery.xml
+    # default_nav_through_poses_bt_xml: /home/z/mid360_simulation/src/bringup/behavior_tree/navigate_through_pose_w_replanning_and_recovery.xml
+    plugin_lib_names:
+      - nav2_compute_path_to_pose_action_bt_node
+      - nav2_compute_path_through_poses_action_bt_node
+      - nav2_smooth_path_action_bt_node
+      - nav2_follow_path_action_bt_node
+      - nav2_spin_action_bt_node
+      - nav2_wait_action_bt_node
+      - nav2_assisted_teleop_action_bt_node
+      - nav2_back_up_action_bt_node
+      - nav2_drive_on_heading_bt_node
+      - nav2_clear_costmap_service_bt_node
+      - nav2_is_stuck_condition_bt_node
+      - nav2_goal_reached_condition_bt_node
+      - nav2_goal_updated_condition_bt_node
+      - nav2_globally_updated_goal_condition_bt_node
+      - nav2_is_path_valid_condition_bt_node
+      - nav2_initial_pose_received_condition_bt_node
+      - nav2_reinitialize_global_localization_service_bt_node
+      - nav2_rate_controller_bt_node
+      - nav2_distance_controller_bt_node
+      - nav2_speed_controller_bt_node
+      - nav2_truncate_path_action_bt_node
+      - nav2_truncate_path_local_action_bt_node
+      - nav2_goal_updater_node_bt_node
+      - nav2_recovery_node_bt_node
+      - nav2_pipeline_sequence_bt_node
+      - nav2_round_robin_node_bt_node
+      - nav2_transform_available_condition_bt_node
+      - nav2_time_expired_condition_bt_node
+      - nav2_path_expiring_timer_condition
+      - nav2_distance_traveled_condition_bt_node
+      - nav2_single_trigger_bt_node
+      - nav2_goal_updated_controller_bt_node
+      - nav2_is_battery_low_condition_bt_node
+      - nav2_navigate_through_poses_action_bt_node
+      - nav2_navigate_to_pose_action_bt_node
+      - nav2_remove_passed_goals_action_bt_node
+      - nav2_planner_selector_bt_node
+      - nav2_controller_selector_bt_node
+      - nav2_goal_checker_selector_bt_node
+      - nav2_controller_cancel_bt_node
+      - nav2_path_longer_on_approach_bt_node
+      - nav2_wait_cancel_bt_node
+      - nav2_spin_cancel_bt_node
+      - nav2_back_up_cancel_bt_node
+      - nav2_assisted_teleop_cancel_bt_node
+      - nav2_drive_on_heading_cancel_bt_node
+      - nav2_is_battery_charging_condition_bt_node
+
+bt_navigator_navigate_through_poses_rclcpp_node:
+  ros__parameters:
+    use_sim_time: True
+
+bt_navigator_navigate_to_pose_rclcpp_node:
+  ros__parameters:
+    use_sim_time: True
+
+controller_server:
+  ros__parameters:
+    odom_topic: oodm
+    controller_frequency: 50.0
+    min_x_velocity_threshold: 0.001
+    min_y_velocity_threshold: 0.5
+    min_theta_velocity_threshold: 0.001
+    failure_tolerance: 0.3
+    progress_checker_plugins: ["progress_checker"]
+    goal_checker_plugins: ["general_goal_checker"]
+    controller_plugins: ["FollowPath"]
+
+    progress_checker:
+      plugin: "nav2_controller::SimpleProgressChecker"
+      required_movement_radius: 0.325
+      movement_time_allowance: 10.0
+    general_goal_checker:
+      stateful: True
+      plugin: "nav2_controller::SimpleGoalChecker"
+      xy_goal_tolerance: 0.3
+      yaw_goal_tolerance: 6.28
+    FollowPath:
+      plugin: "pb_omni_pid_pursuit_controller::OmniPidPursuitController"
+      translation_kp: 3.0
+      translation_ki: 0.1
+      translation_kd: 0.3
+      enable_rotation: false
+      rotation_kp: 3.0
+      rotation_ki: 0.1
+      rotation_kd: 0.3
+      transform_tolerance: 0.1
+      min_max_sum_error: 1.0
+      lookahead_dist: 2.0
+      use_velocity_scaled_lookahead_dist: true
+      lookahead_time: 1.0
+      min_lookahead_dist: 0.5
+      max_lookahead_dist: 2.0
+      use_interpolation: false
+      use_rotate_to_heading: false
+      use_rotate_to_heading_treshold: 0.1
+      min_approach_linear_velocity: 0.7
+      approach_velocity_scaling_dist: 0.3
+      v_linear_min: -3.0
+      v_linear_max: 3.0
+      v_angular_min: -3.0
+      v_angular_max: 3.0
+      curvature_min: 0.4
+      curvature_max: 0.7
+      reduction_ratio_at_high_curvature: 0.3
+      curvature_forward_dist: 0.7
+      curvature_backward_dist: 0.3
+      max_velocity_scaling_factor_rate: 0.9
+
+local_costmap:
+  local_costmap:
+    ros__parameters:
+      update_frequency: 1.0
+      publish_frequency: 1.0
+      global_frame: map
+      robot_base_frame: base_footprint
+      use_sim_time: True
+      rolling_window: true
+      width: 6
+      height: 6
+      resolution: 0.05
+
+global_costmap:
+  global_costmap:
+    ros__parameters:
+      footprint_padding: 0.03
+      update_frequency: 5.0
+      publish_frequency: 5.0
+      global_frame: map
+      robot_base_frame: base_footprint
+      use_sim_time: True
+      robot_radius: 0.22  # 减小半径避免机器人轻易进入代价层被判定卡住（实际半径约0.2m，留有余量）
+      resolution: 0.05
+      plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
+      obstacle_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"
+        enabled: True
+        observation_sources: scan
+        footprint_clearing_enabled: true
+        max_obstacle_height: 2.0
+        combination_method: 1
+        scan:
+          topic: /scan
+          obstacle_max_range: 2.5
+          obstacle_min_range: 0.0
+          raytrace_max_range: 3.0
+          raytrace_min_range: 0.0
+          max_obstacle_height: 2.0
+          min_obstacle_height: -0.3
+          clearing: True
+          marking: True
+          data_type: "LaserScan"
+          inf_is_valid: False
+      static_layer:
+        plugin: "nav2_costmap_2d::StaticLayer"
+        map_subscribe_transient_local: True
+        enabled: true
+        subscribe_to_updates: true
+        transform_tolerance: 0.1
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        enabled: true
+        inflation_radius: 0.55
+        cost_scaling_factor: 3.0
+        inflate_unknown: true
+        inflate_around_unknown: true
+      always_send_full_costmap: True
+      
+map_server:
+  ros__parameters:
+    use_sim_time: True
+    # 在启动时会被 "map" 启动配置或提供的默认值覆盖。
+    # 要在 yaml 中使用，请移除 tb3_simulation_launch.py 文件中的默认 "map" 值并在此提供地图的完整路径。
+    yaml_filename: ""
+
+map_saver:
+  ros__parameters:
+    use_sim_time: True
+    save_map_timeout: 5.0
+    free_thresh_default: 0.25
+    occupied_thresh_default: 0.65
+    map_subscribe_transient_local: True
+
+planner_server:
+  ros__parameters:
+    expected_planner_frequency: 20.0
+    use_sim_time: True
+    planner_plugins: ["GridBased"]
+    GridBased:
+      # ---- Dijkstra 或 A* ---- 
+      # plugin: "nav2_navfn_planner/NavfnPlanner"
+      # tolerance: 0.5
+      # use_astar: true
+      # allow_unknown: true
+
+      # ---- 2D A*，带有代价感知惩罚 ---- 
+      # plugin: "nav2_smac_planner/SmacPlanner2D"
+      # tolerance: 0.125                      # 如果无法到达精确位姿时的规划容差，单位为米
+      # downsample_costmap: false             # 是否对地图进行降采样
+      # downsampling_factor: 1                # 代价地图层分辨率的倍数（例如在 5cm 的代价地图上设为 2 将变为 10cm）
+      # allow_unknown: true                   # 允许在未知区域内行驶
+      # max_iterations: 1000000               # 失败前（如不可达时）搜索的最大总迭代次数，设为 -1 禁用
+      # max_on_approach_iterations: 1000      # 一旦进入容差范围内，尝试到达目标的最大迭代次数
+      # max_planning_time: 2.0                # 规划和路径平滑的最大时间（秒）
+      # cost_travel_multiplier: 2.0           # 应用于搜索的代价乘数，用于避开高代价区域。较大的值会使机器人更精确地位于通道中心（如果存在非 FREE 的代价势场），但计算时间稍长。为了速度优化，1.0 是合理的。一个合理的权衡值是 2.0。0.0 会有效禁用避开障碍物，表现得像原生的二分类搜索 A*。
+      # use_final_approach_orientation: false # 最终路径位姿是设为目标请求的朝向 (false)，还是与接近角度一致以使机器人不旋转到目标朝向 (true)
+      # smoother:
+      #   max_iterations: 1000
+      #   w_smooth: 0.3
+      #   w_data: 0.2
+      #   tolerance: 1.0e-10
+
+      # ---- Theta* ---- 
+      plugin: "nav2_theta_star_planner/ThetaStarPlanner"
+      how_many_corners: 8
+      w_euc_cost: 1.0
+      w_traversal_cost: 2.0
+      w_heuristic_cost: 1.0
+
+      # ---- Hybrid A*，带有代价感知惩罚 ---- 
+      # plugin: "nav2_smac_planner/SmacPlannerHybrid"
+      # downsample_costmap: false           # 是否对地图进行降采样
+      # downsampling_factor: 1              # 代价地图层分辨率的倍数（例如在 5cm 的代价地图上设为 2 将变为 10cm）
+      # tolerance: 0.25                     # 如果找不到精确目标，用于有效容差终点的到目标的启发式代价（距离）。
+      # allow_unknown: true                 # 允许在未知区域内行驶
+      # max_iterations: 1000000             # 失败前（如不可达时）搜索的最大总迭代次数，设为 -1 禁用
+      # max_on_approach_iterations: 1000    # 进入容差范围后，继续尝试寻找精确解的最大迭代次数
+      # max_planning_time: 5.0              # 规划和路径平滑的最大时间（秒）
+      # motion_model_for_search: "DUBIN"    # 混合 A* 的 Dubin 或 Reeds-Shepp 模型
+      # angle_quantization_bins: 72         # 搜索的角度离散化数量
+      # analytic_expansion_ratio: 3.5       # 最终接近时尝试解析扩展（analytic expansions）的比例。
+      # analytic_expansion_max_length: 3.0  # 对于混合/格栅节点：认为解析扩展有效的最大长度，以防止不安全的快捷方式
+      # analytic_expansion_max_cost: 200.0  # 解析扩展中任何部分包含并被视为有效的最大单点代价，除非在接近目标时确有必要
+      # analytic_expansion_max_cost_override: false  # 如果处于到目标的临界距离内，是否覆盖最大代价设置（即可能是必须的）
+      # minimum_turning_radius: 0.40        # 路径或车辆的最小转弯半径（米）
+      # reverse_penalty: 1.0 # 2.0                # 如果运动是后退时的惩罚，必须 >= 1
+      # change_penalty: 0.0                 # 如果运动改变方向（左到右）时的惩罚，必须 >= 0
+      # non_straight_penalty: 1.2           # 如果是非直线运动时的惩罚，必须 >= 1
+      # cost_penalty: 2.0                   # 在添加到障碍物地图动态规划距离扩展启发式时，对高代价区域应用的惩罚。这会将机器人推向通道中心。1.3 - 3.5 之间的值是合理的。
+      # retrospective_penalty: 0.015
+      # lookup_table_size: 20.0             # 缓存 Dubin/Reeds-Shepp 距离窗口的大小，单位为米。
+      # cache_obstacle_heuristic: false     # 在对同一目标位置的后续重新规划之间缓存障碍物地图动态规划距离扩展启发式。如果代价地图大部分是静态的，这会显著提高重新规划性能。
+      # debug_visualizations: false         # 对于混合节点：是否在 /expansions 话题发布扩展位姿数组（方向无意义）并在 /planned_footprints 话题发布路径足迹。警告：计算和显示都很繁重，仅供调试使用，因为它会降低性能。
+      # use_quadratic_cost_penalty: False
+      # downsample_obstacle_heuristic: True
+      # allow_primitive_interpolation: False
+      # smooth_path: True                   # 如果为 true，则对路径进行简单快速的平滑后处理
+
+      # smoother:
+      #   max_iterations: 1000
+      #   w_smooth: 0.3
+      #   w_data: 0.2
+      #   tolerance: 1.0e-10
+      #   do_refinement: true
+      #   refinement_num: 2
+
+smoother_server:
+  ros__parameters:
+    use_sim_time: True
+    smoother_plugins: ["simple_smoother"]
+    simple_smoother:
+      plugin: "nav2_smoother::SimpleSmoother"
+      tolerance: 1.0e-10
+      max_its: 1000
+      do_refinement: True
+
+behavior_server:
+  ros__parameters:
+    costmap_topic: local_costmap/costmap_raw
+    footprint_topic: local_costmap/published_footprint
+    cycle_frequency: 10.0
+    behavior_plugins: ["spin", "backup", "drive_on_heading", "assisted_teleop", "wait"]
+    spin:
+      plugin: "nav2_behaviors/Spin"
+    backup:
+      plugin: "pb_nav2_behaviors/BackUpFreeSpace"
+    drive_on_heading:
+      plugin: "nav2_behaviors/DriveOnHeading"
+    wait:
+      plugin: "nav2_behaviors/Wait"
+    assisted_teleop:
+      plugin: "nav2_behaviors/AssistedTeleop"
+    global_frame: map
+    robot_base_frame: base_footprint
+    transform_tolerance: 0.1
+    use_sim_time: True
+    simulate_ahead_time: 2.0
+    max_rotational_vel: 1.0
+    min_rotational_vel: 0.4
+    rotational_acc_lim: 3.2
+    robot_radius: 0.22 
+    max_radius: 3.5
+    service_name: "global_costmap/get_costmap"
+    free_threshold: 3
+    visualization: True
+
+robot_state_publisher:
+  ros__parameters:
+    use_sim_time: True
+
+waypoint_follower:
+  ros__parameters:
+    use_sim_time: True
+    loop_rate: 20
+    stop_on_failure: false
+    waypoint_task_executor_plugin: "wait_at_waypoint"
+    wait_at_waypoint:
+      plugin: "nav2_waypoint_follower::WaitAtWaypoint"
+      enabled: False
+      waypoint_pause_duration: 200
+
+velocity_smoother:
+  ros__parameters:
+    use_sim_time: True
+    smoothing_frequency: 20.0
+    scale_velocities: False
+    feedback: "OPEN_LOOP"
+    max_velocity: [3.0, 3.0, 3.0]
+    min_velocity: [-3.0, -3.0, -3.0]
+    max_accel: [3.0, 3.0, 3.0]
+    max_decel: [-3.0, -3.0, -3.0]
+    odom_topic: "odom"
+    odom_duration: 0.1
+    deadband_velocity: [0.05, 0.05, 0.05]
+    velocity_timeout: 1.0

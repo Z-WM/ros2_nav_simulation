@@ -1,0 +1,306 @@
+{
+  "metadata": {
+    "imagePath": "RMUC2026赛场渲染图.png",
+    "resolution": 0.01,
+    "widthPixels": 2800,
+    "heightPixels": 1500,
+    "originPixel": {
+      "u": 390,
+      "v": 695
+    }
+  },
+  "waypoints": [
+    {
+      "name": "守护堡垒点",
+      "pixel": {
+        "u": 388.29787234042556,
+        "v": 805.0531833729846
+      },
+      "world": {
+        "x": -0.017,
+        "y": -1.101
+      }
+    },
+    {
+      "name": "打符点",
+      "pixel": {
+        "u": 1015.9574468085107,
+        "v": 408.7765876283037
+      },
+      "world": {
+        "x": 6.26,
+        "y": 2.862
+      }
+    },
+    {
+      "name": "巡逻点",
+      "pixel": {
+        "u": 940.1595744680851,
+        "v": 987.2340344368143
+      },
+      "world": {
+        "x": 5.502,
+        "y": -2.922
+      }
+    },
+    {
+      "name": "补给点",
+      "pixel": {
+        "u": 217.6015473887814,
+        "v": 1291.7619064274706
+      },
+      "world": {
+        "x": -1.724,
+        "y": -5.968
+      }
+    },
+    {
+      "name": "前哨攻击点",
+      "pixel": {
+        "u": 1151.0413821769139,
+        "v": 236.18286268512506
+      },
+      "world": {
+        "x": 7.61,
+        "y": 4.588
+      }
+    }
+  ],
+  "zones": [],
+  "decisionNodes": [
+    {
+      "id": "node-import-1",
+      "type": "condition",
+      "x": 960,
+      "y": 60,
+      "data": {
+        "field": "game_progress",
+        "value_type": "uint16",
+        "operator": "==",
+        "threshold": 4,
+        "priority": 1,
+        "loop": false
+      },
+      "children": [
+        "node-import-2",
+        "node-import-4",
+        "node-import-7",
+        "node-import-16"
+      ]
+    },
+    {
+      "id": "node-import-2",
+      "type": "condition",
+      "x": 120,
+      "y": 190,
+      "data": {
+        "field": "current_hp",
+        "value_type": "uint16",
+        "operator": "<",
+        "threshold": 150,
+        "priority": 1,
+        "loop": false
+      },
+      "children": [
+        "node-import-3"
+      ]
+    },
+    {
+      "id": "node-import-3",
+      "type": "action",
+      "x": 120,
+      "y": 320,
+      "data": {
+        "action": "补给点",
+        "loop": false,
+        "duration": 0,
+        "exit_condition": {
+          "field": "current_hp",
+          "value_type": "uint16",
+          "operator": ">=",
+          "threshold": 400
+        }
+      },
+      "children": []
+    },
+    {
+      "id": "node-import-4",
+      "type": "condition",
+      "x": 360,
+      "y": 190,
+      "data": {
+        "field": "shoot_num",
+        "value_type": "uint16",
+        "operator": "<=",
+        "threshold": 30,
+        "priority": 2,
+        "loop": false
+      },
+      "children": [
+        "node-import-6"
+      ]
+    },
+    {
+      "id": "node-import-6",
+      "type": "action",
+      "x": 361.4640999999999,
+      "y": 322.6233,
+      "data": {
+        "action": "补给点",
+        "loop": false,
+        "duration": 0,
+        "exit_condition": {
+          "field": "shoot_num",
+          "value_type": "uint16",
+          "operator": ">=",
+          "threshold": 100
+        }
+      },
+      "children": []
+    },
+    {
+      "id": "node-import-7",
+      "type": "condition",
+      "x": 720,
+      "y": 190,
+      "data": {
+        "field": "fortress_status",
+        "value_type": "uint16",
+        "operator": "==",
+        "threshold": 2,
+        "priority": 3,
+        "loop": false
+      },
+      "children": [
+        "node-import-8",
+        "node-import-10"
+      ]
+    },
+    {
+      "id": "node-import-8",
+      "type": "condition",
+      "x": 600,
+      "y": 320,
+      "data": {
+        "field": "vision_status",
+        "value_type": "uint8",
+        "operator": "==",
+        "threshold": 1,
+        "priority": 3,
+        "loop": false
+      },
+      "children": [
+        "node-import-9"
+      ]
+    },
+    {
+      "id": "node-import-9",
+      "type": "action",
+      "x": 600,
+      "y": 450,
+      "data": {
+        "action": "STOP",
+        "loop": false,
+        "duration": 0,
+        "exit_condition": null
+      },
+      "children": []
+    },
+    {
+      "id": "node-import-10",
+      "type": "action",
+      "x": 840,
+      "y": 320,
+      "data": {
+        "action": "守护堡垒点",
+        "loop": false,
+        "duration": 0,
+        "exit_condition": null
+      },
+      "children": []
+    },
+    {
+      "id": "node-import-16",
+      "type": "condition",
+      "x": 1231.9853999999998,
+      "y": 191.46409999999997,
+      "data": {
+        "field": "rune_statues",
+        "value_type": "uint16",
+        "operator": "!=",
+        "threshold": 2,
+        "priority": 4,
+        "loop": false
+      },
+      "children": [
+        "node-import-17"
+      ]
+    },
+    {
+      "id": "node-import-17",
+      "type": "action",
+      "x": 1229.0572,
+      "y": 321.46410000000014,
+      "data": {
+        "action": "前哨攻击点",
+        "loop": false,
+        "duration": 0,
+        "exit_condition": null
+      },
+      "children": [
+        "node-import-18",
+        "node-import-20"
+      ]
+    },
+    {
+      "id": "node-import-18",
+      "type": "condition",
+      "x": 1145.6596999999997,
+      "y": 451.46410000000014,
+      "data": {
+        "field": "vision_status",
+        "value_type": "uint8",
+        "operator": "==",
+        "threshold": 1,
+        "priority": 4,
+        "loop": false
+      },
+      "children": [
+        "node-import-19"
+      ]
+    },
+    {
+      "id": "node-import-19",
+      "type": "action",
+      "x": 1142.7314999999999,
+      "y": 594.6410000000001,
+      "data": {
+        "action": "前哨攻击点",
+        "loop": true,
+        "duration": 0,
+        "exit_condition": null,
+        "actions": [
+          "前哨攻击点"
+        ]
+      },
+      "children": []
+    },
+    {
+      "id": "node-import-20",
+      "type": "action",
+      "x": 1414.9416999999996,
+      "y": 448.53589999999997,
+      "data": {
+        "action": "前哨攻击点",
+        "loop": true,
+        "duration": 0,
+        "exit_condition": null,
+        "actions": [
+          "前哨攻击点"
+        ]
+      },
+      "children": []
+    }
+  ],
+  "yamlContent": "topic:\n  name: /referee\n  type: sentry_msgs/msg/Referee\nmap_metadata:\n  image_path: RMUC2026赛场渲染图.png\n  resolution: 0.01\n  width_pixels: 2800\n  height_pixels: 1500\n  origin_pixel:\n    - 390\n    - 695\nwaypoints:\n  - name: 守护堡垒点\n    pixel:\n      - 388.29787234042556\n      - 805.0531833729846\n    world:\n      - -0.017\n      - -1.101\n  - name: 打符点\n    pixel:\n      - 1015.9574468085107\n      - 408.7765876283037\n    world:\n      - 6.26\n      - 2.862\n  - name: 巡逻点\n    pixel:\n      - 940.1595744680851\n      - 987.2340344368143\n    world:\n      - 5.502\n      - -2.922\n  - name: 补给点\n    pixel:\n      - 217.6015473887814\n      - 1291.7619064274706\n    world:\n      - -1.724\n      - -5.968\n  - name: 前哨攻击点\n    pixel:\n      - 1151.0413821769139\n      - 236.18286268512506\n    world:\n      - 7.61\n      - 4.588\nzones: []\ndecision_tree:\n  root:\n    type: Selector\n    children:\n      - type: Sequence\n        priority: 1\n        children:\n          - type: Condition\n            field: game_progress\n            value_type: uint16\n            operator: '=='\n            threshold: 4\n          - type: Condition\n            field: current_hp\n            value_type: uint16\n            operator: <\n            threshold: 150\n          - type: Action\n            action: 补给点\n            exit_condition:\n              field: current_hp\n              value_type: uint16\n              operator: '>='\n              threshold: 400\n      - type: Sequence\n        priority: 2\n        children:\n          - type: Condition\n            field: game_progress\n            value_type: uint16\n            operator: '=='\n            threshold: 4\n          - type: Condition\n            field: shoot_num\n            value_type: uint16\n            operator: <=\n            threshold: 30\n          - type: Action\n            action: 补给点\n            exit_condition:\n              field: shoot_num\n              value_type: uint16\n              operator: '>='\n              threshold: 100\n      - type: Sequence\n        priority: 3\n        children:\n          - type: Condition\n            field: game_progress\n            value_type: uint16\n            operator: '=='\n            threshold: 4\n          - type: Condition\n            field: fortress_status\n            value_type: uint16\n            operator: '=='\n            threshold: 2\n          - type: Condition\n            field: vision_status\n            value_type: uint8\n            operator: '=='\n            threshold: 1\n          - type: Action\n            action: STOP\n      - type: Sequence\n        priority: 3\n        children:\n          - type: Condition\n            field: game_progress\n            value_type: uint16\n            operator: '=='\n            threshold: 4\n          - type: Condition\n            field: fortress_status\n            value_type: uint16\n            operator: '=='\n            threshold: 2\n          - type: Action\n            action: 守护堡垒点\n      - type: Sequence\n        priority: 4\n        children:\n          - type: Condition\n            field: game_progress\n            value_type: uint16\n            operator: '=='\n            threshold: 4\n          - type: Condition\n            field: rune_statues\n            value_type: uint16\n            operator: '!='\n            threshold: 2\n          - type: Action\n            action: 前哨攻击点\n          - type: Condition\n            field: vision_status\n            value_type: uint8\n            operator: '=='\n            threshold: 1\n          - type: Action\n            action: 前哨攻击点\n            actions:\n              - 前哨攻击点\n            loop: true\n      - type: Sequence\n        priority: 4\n        children:\n          - type: Condition\n            field: game_progress\n            value_type: uint16\n            operator: '=='\n            threshold: 4\n          - type: Condition\n            field: rune_statues\n            value_type: uint16\n            operator: '!='\n            threshold: 2\n          - type: Action\n            action: 前哨攻击点\n          - type: Action\n            action: 前哨攻击点\n            actions:\n              - 前哨攻击点\n            loop: true\n"
+}
