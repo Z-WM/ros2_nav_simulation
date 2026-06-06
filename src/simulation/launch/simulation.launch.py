@@ -16,7 +16,7 @@ def generate_launch_description():
     pkg_gazebo_ros = get_package_share_directory('gazebo_ros')
     
     # --- 世界配置 ---
-    world_path = os.path.join(bringup_dir, 'world', 'empty.world')
+    world_path = os.path.join(bringup_dir, 'world', 'RMUC2026.world')
     spawn_x, spawn_y, spawn_z, spawn_yaw = '0.0', '0.0', '0.0', '0.0'
     # ------------------------------------
 

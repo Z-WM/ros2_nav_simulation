@@ -1,5 +1,23 @@
 <sdf version='1.7'>
   <world name='default'>
+    <light name='sun' type='directional'>
+      <cast_shadows>1</cast_shadows>
+      <pose>0 0 10 0 -0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <attenuation>
+        <range>1000</range>
+        <constant>0.9</constant>
+        <linear>0.01</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
+      <direction>-0.5 0.1 -0.9</direction>
+      <spot>
+        <inner_angle>0</inner_angle>
+        <outer_angle>0</outer_angle>
+        <falloff>0</falloff>
+      </spot>
+    </light>
     <model name='ground_plane'>
       <static>1</static>
       <link name='link'>
@@ -72,40 +90,8 @@
       <elevation>0</elevation>
       <heading_deg>0</heading_deg>
     </spherical_coordinates>
-    <state world_name='default'>
-      <sim_time>31 537000000</sim_time>
-      <real_time>31 576763280</real_time>
-      <wall_time>1776671237 301717933</wall_time>
-      <iterations>31537</iterations>
-      <model name='Untitled'>
-        <pose>-10.2112 0.806448 0 0 -0 0</pose>
-        <scale>1 1 1</scale>
-        <link name='link_1'>
-          <pose>-10.2112 0.806448 0 0 -0 0</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='ground_plane'>
-        <pose>0 0 0 0 -0 0</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose>0 0 0 0 -0 0</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <light name='user_directional_light_0'>
-        <pose>-9.7923 -8.9702 1 0 -0 0</pose>
-      </light>
-      <light name='user_directional_light_1'>
-        <pose>-8.34387 13.2606 1 0 -0 0</pose>
-      </light>
-    </state>
     <model name='Untitled'>
-      <link name='link_1'>
+      <link name='link_0'>
         <inertial>
           <mass>1</mass>
           <inertia>
@@ -118,15 +104,16 @@
           </inertia>
           <pose>0 0 0 0 -0 0</pose>
         </inertial>
-        <pose>-7e-06 0 0 0 -0 0</pose>
+        <pose>0 0 0 0 -0 0</pose>
+        <gravity>1</gravity>
         <self_collide>0</self_collide>
+        <kinematic>1</kinematic>
         <enable_wind>0</enable_wind>
-        <kinematic>0</kinematic>
         <visual name='visual'>
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/z/test_ws/src/simulation/model/RMUC2026/rmuc_2026 .stl</uri>
+              <uri>/home/z/ros2_nav_simulation/src/simulation/model/RMUC2026/rmuc_2026 .stl</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -136,7 +123,13 @@
               <uri>file://media/materials/scripts/gazebo.material</uri>
               <name>Gazebo/Grey</name>
             </script>
-            <shader type='pixel'/>
+            <shader type='pixel'>
+              <normal_map>__default__</normal_map>
+            </shader>
+            <ambient>0.3 0.3 0.3 1</ambient>
+            <diffuse>0.7 0.7 0.7 1</diffuse>
+            <specular>0.01 0.01 0.01 1</specular>
+            <emissive>0 0 0 1</emissive>
           </material>
           <transparency>0</transparency>
           <cast_shadows>1</cast_shadows>
@@ -147,7 +140,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/z/test_ws/src/simulation/model/RMUC2026/rmuc_2026 .stl</uri>
+              <uri>/home/z/ros2_nav_simulation/src/simulation/model/RMUC2026/rmuc_2026 .stl</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -198,39 +191,43 @@
           </surface>
         </collision>
       </link>
-      <static>1</static>
+      <static>0</static>
       <allow_auto_disable>1</allow_auto_disable>
-      <pose>-10.2112 0.806448 0 0 -0 0</pose>
+      <pose>10.1 -0.5 -0.45 0 -0 0</pose>
+      <enable_wind>0</enable_wind>
     </model>
-    <light name='user_directional_light_0' type='directional'>
-      <pose>-9.7923 -8.9702 1 0 -0 0</pose>
-      <diffuse>0.5 0.5 0.5 1</diffuse>
-      <specular>0.1 0.1 0.1 1</specular>
-      <direction>0.1 0.1 -0.9</direction>
-      <attenuation>
-        <range>20</range>
-        <constant>0.5</constant>
-        <linear>0.01</linear>
-        <quadratic>0.001</quadratic>
-      </attenuation>
-      <cast_shadows>1</cast_shadows>
-    </light>
-    <light name='user_directional_light_1' type='directional'>
-      <pose>-8.34387 13.2606 1 0 -0 0</pose>
-      <diffuse>0.5 0.5 0.5 1</diffuse>
-      <specular>0.1 0.1 0.1 1</specular>
-      <direction>0.1 0.1 -0.9</direction>
-      <attenuation>
-        <range>20</range>
-        <constant>0.5</constant>
-        <linear>0.01</linear>
-        <quadratic>0.001</quadratic>
-      </attenuation>
-      <cast_shadows>1</cast_shadows>
-    </light>
+    <state world_name='default'>
+      <sim_time>9 569000000</sim_time>
+      <real_time>9 608274738</real_time>
+      <wall_time>1780731897 162801728</wall_time>
+      <iterations>9569</iterations>
+      <model name='Untitled'>
+        <pose>10.1 -0.5 -0.45 0 -0 0</pose>
+        <scale>1 1 1</scale>
+        <link name='link_0'>
+          <pose>10.1 -0.5 -0.45 0 -0 0</pose>
+          <velocity>0 0 0 0 -0 0</velocity>
+          <acceleration>0 0 0 0 -0 0</acceleration>
+          <wrench>0 0 0 0 -0 0</wrench>
+        </link>
+      </model>
+      <model name='ground_plane'>
+        <pose>0 0 0 0 -0 0</pose>
+        <scale>1 1 1</scale>
+        <link name='link'>
+          <pose>0 0 0 0 -0 0</pose>
+          <velocity>0 0 0 0 -0 0</velocity>
+          <acceleration>0 0 0 0 -0 0</acceleration>
+          <wrench>0 0 0 0 -0 0</wrench>
+        </link>
+      </model>
+      <light name='sun'>
+        <pose>0 0 10 0 -0 0</pose>
+      </light>
+    </state>
     <gui fullscreen='0'>
       <camera name='user_camera'>
-        <pose>-3.07055 0.660031 37.3508 -2e-06 1.5698 3.08815</pose>
+        <pose>7.50075 -23.6331 100.435 0 1.31964 3.13219</pose>
         <view_controller>orbit</view_controller>
         <projection_type>perspective</projection_type>
       </camera>
