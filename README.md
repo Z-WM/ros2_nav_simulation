@@ -1,7 +1,7 @@
 # Quick Start
 ```bash
 sudo docker run -dit \
---name=mid360_simulation \
+--name=ros2_nav_simulation \
 --privileged  \
 -v /dev:/dev \
 -v /home/${SUDO_USER:-$USER}:/home/${SUDO_USER:-$USER} \
@@ -9,7 +9,7 @@ sudo docker run -dit \
 -e DISPLAY=$DISPLAY \
 -w /home/${SUDO_USER:-$USER} \
 --net=host \
-faise1/mid360_simulation:v1.0
+faise1/ros2_nav_simulation:v2.0
 ```
 
 # LAUNCH
