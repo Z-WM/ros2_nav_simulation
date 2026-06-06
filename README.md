@@ -9,7 +9,7 @@ sudo docker run -dit \
 -e DISPLAY=$DISPLAY \
 -w /home/${SUDO_USER:-$USER} \
 --net=host \
-faise1/mid360_simulation:latest
+faise1/mid360_simulation:v1.0
 ```
 
 # LAUNCH

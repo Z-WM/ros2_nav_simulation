@@ -35,7 +35,7 @@ def generate_launch_description():
     declare_map_yaml_cmd = DeclareLaunchArgument(
         "map",
         default_value=[
-            TextSubstitution(text=os.path.join(bringup_dir, "map",  "test.yaml")),
+            TextSubstitution(text=os.path.join(bringup_dir, "map",  "RMUC2026.yaml")),
         ],
         description="Full path to map file to load",
     )
@@ -93,15 +93,15 @@ def generate_launch_description():
                 launch_arguments={'use_sim_time': use_sim_time}.items()
             ),
 
-        # IncludeLaunchDescription(
-        #         launch_description_source=PythonLaunchDescriptionSource([
-        #             PathJoinSubstitution([
-        #                 FindPackageShare('decision_executor'),
-        #                 'launch',
-        #                 'decision_executor.launch.py'
-        #             ])
-        #         ]),
-        #     ),
+        IncludeLaunchDescription(
+                launch_description_source=PythonLaunchDescriptionSource([
+                    PathJoinSubstitution([
+                        FindPackageShare('decision_executor'),
+                        'launch',
+                        'decision_executor.launch.py'
+                    ])
+                ]),
+            ),
 
         IncludeLaunchDescription(
                 launch_description_source=PythonLaunchDescriptionSource([
