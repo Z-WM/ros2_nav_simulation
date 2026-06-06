@@ -1,0 +1,19 @@
+<library path="nav2_waypoint_panel">
+  <class name="nav2_waypoint_panel/WaypointPanel"
+         type="nav2_waypoint_panel::WaypointPanel"
+         base_class_type="rviz_common::Panel">
+    <description>
+      A panel for multi-point waypoint navigation.
+    </description>
+    <display_name>Waypoint Navigation</display_name>
+  </class>
+  <class name="nav2_waypoint_panel/WaypointTool"
+         type="nav2_waypoint_panel::WaypointTool"
+         base_class_type="rviz_common::Tool">
+    <description>
+      A tool to set waypoints by clicking on the map.
+    </description>
+    <display_name>waypoint</display_name>
+  </class>
+</library>
+
