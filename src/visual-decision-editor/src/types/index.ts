@@ -50,7 +50,9 @@ export type RefereeMessageField =
     | 'hp_deduction_reason'
     | 'shoot_num'
     | 'rfid_status'
-    | 'obtain_shoot_num';
+    | 'obtain_shoot_num'
+    | 'target_position_x'
+    | 'target_position_y';
 
 // Field name → ROS msg type, matching sentry_msgs/msg/Referee.msg
 export const REFEREE_FIELD_TYPES: Record<RefereeMessageField, string> = {
@@ -75,8 +77,13 @@ export const REFEREE_FIELD_TYPES: Record<RefereeMessageField, string> = {
     hp_deduction_reason: 'uint8',
     shoot_num: 'uint16',
     rfid_status: 'uint32',
-    obtain_shoot_num: 'uint16'
+    obtain_shoot_num: 'uint16',
+    target_position_x: 'float32',
+    target_position_y: 'float32'
 };
+
+export const REFEREE_TARGET_ACTION = 'REFEREE_TARGET';
+export const REFEREE_TARGET_ACTION_LABEL = '前往裁判系统目标点';
 
 export interface ConditionNodeData {
     type: 'Condition';

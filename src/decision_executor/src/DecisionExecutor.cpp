@@ -6,6 +6,12 @@
 namespace decision_executor
 {
 
+namespace
+{
+constexpr const char* kRefereeTargetAction = "REFEREE_TARGET";
+constexpr double kRefereeTargetEpsilon = 0.05;
+}
+
 DecisionExecutor::DecisionExecutor()
   : Node("decision_executor"),
     goal_in_progress_(false)
@@ -194,8 +200,11 @@ std::shared_ptr<DecisionNode> DecisionExecutor::parseDecisionNode(const YAML::No
 
     // Parse specific action for zone
     if (yaml_node["action"] && !yaml_node["action"].IsNull()) {
-        auto action_node = std::dynamic_pointer_cast<ActionNode>(parseDecisionNode(yaml_node["action"]));
-        node->setAction(action_node);
+        auto action_yaml = yaml_node["action"];
+        if (action_yaml.IsMap() && action_yaml["type"]) {
+            auto action_node = std::dynamic_pointer_cast<ActionNode>(parseDecisionNode(action_yaml));
+            node->setAction(action_node);
+        }
     }
 
     // Parse conditions for zone
@@ -479,6 +488,78 @@ NodeStatus DecisionExecutor::tickSequence(std::shared_ptr<DecisionNode> node, co
   return NodeStatus::SUCCESS;
 }
 
+bool DecisionExecutor::hasValidRefereeTarget(const Referee& msg) const
+{
+  return msg.target_position_x != 0.0 && msg.target_position_y != 0.0;
+}
+
+bool DecisionExecutor::isSameRefereeTarget(double x, double y) const
+{
+  return referee_target_active_ &&
+         std::abs(active_referee_target_x_ - x) < kRefereeTargetEpsilon &&
+         std::abs(active_referee_target_y_ - y) < kRefereeTargetEpsilon;
+}
+
+NodeStatus DecisionExecutor::tickRefereeTargetAction(const Referee& msg, const void* node_ptr)
+{
+  const double x = msg.target_position_x;
+  const double y = msg.target_position_y;
+
+  if (!hasValidRefereeTarget(msg)) {
+    if (referee_target_active_ || exec_context_.target_waypoint == kRefereeTargetAction) {
+      RCLCPP_INFO(this->get_logger(), "Referee target cleared or invalid, canceling referee navigation");
+      cancelCurrentGoal();
+    }
+    referee_target_active_ = false;
+    active_referee_target_x_ = 0.0;
+    active_referee_target_y_ = 0.0;
+    exec_context_.goal_sent = false;
+    exec_context_.target_waypoint.clear();
+    last_nav_succeeded_ = false;
+    return NodeStatus::FAILURE;
+  }
+
+  const bool target_changed = !isSameRefereeTarget(x, y);
+  const bool action_changed = exec_context_.target_waypoint != kRefereeTargetAction;
+
+  if (!exec_context_.goal_sent || action_changed || target_changed) {
+    if (exec_context_.goal_sent || goal_in_progress_) {
+      if (action_changed || target_changed) {
+        RCLCPP_INFO(this->get_logger(), "Referee target changed, canceling previous navigation goal");
+      }
+      cancelCurrentGoal();
+    }
+
+    active_referee_target_x_ = x;
+    active_referee_target_y_ = y;
+    referee_target_active_ = true;
+    exec_context_.target_waypoint = kRefereeTargetAction;
+    exec_context_.goal_sent = true;
+    sendNavigationGoalToPose(x, y, "referee target");
+    return NodeStatus::RUNNING;
+  }
+
+  if (!goal_in_progress_) {
+    if (last_nav_succeeded_) {
+      RCLCPP_INFO(this->get_logger(), "Reached referee target based on Nav2 result: (%.2f, %.2f)", x, y);
+      exec_context_.action_start_times.erase(node_ptr);
+      exec_context_.goal_sent = false;
+      exec_context_.target_waypoint.clear();
+      referee_target_active_ = false;
+      active_referee_target_x_ = 0.0;
+      active_referee_target_y_ = 0.0;
+      return NodeStatus::SUCCESS;
+    }
+
+    RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 2000,
+      "Navigation stopped but referee target was not reached. Retrying...");
+    exec_context_.goal_sent = false;
+    return NodeStatus::RUNNING;
+  }
+
+  return NodeStatus::RUNNING;
+}
+
 // Tick individual node
 NodeStatus DecisionExecutor::tickNode(std::shared_ptr<DecisionNode> node, const Referee& msg)
 {
@@ -581,6 +662,16 @@ NodeStatus DecisionExecutor::tickNode(std::shared_ptr<DecisionNode> node, const 
 
       // Keep returning RUNNING to halt execution here indefinitely (until preempted)
       return NodeStatus::RUNNING;
+    }
+
+    // Special case: referee-provided small-map target
+    if (waypoint == kRefereeTargetAction) {
+      NodeStatus status = tickRefereeTargetAction(msg, node_ptr);
+      if (status == NodeStatus::SUCCESS) {
+        exec_context_.action_indices[node_ptr] = current_act_idx + 1;
+        return NodeStatus::RUNNING;
+      }
+      return status;
     }
 
     // Check failure cooldown (5 seconds)
@@ -696,6 +787,14 @@ NodeStatus DecisionExecutor::tickZone(std::shared_ptr<DecisionNode> node, const 
   // 3. Apply zone parameters
   for (auto& param : zone_node->getParams()) {
     tickNode(param, msg); // Use tickNode to call setRemoteParameter
+  }
+
+  if (!zone_node->getAction() && zone_node->getChildren().empty()) {
+    RCLCPP_DEBUG(
+      this->get_logger(),
+      "Zone %s matched with params only; keeping current action",
+      zone_node->getZoneName().c_str());
+    return NodeStatus::FAILURE;
   }
 
   // 4. Execute zone action if any
@@ -815,6 +914,36 @@ void DecisionExecutor::sendNavigationGoal(const std::string& waypoint_name)
   nav_client_->async_send_goal(goal_msg, send_goal_options);
   goal_in_progress_ = true; // Mark as started
   last_nav_succeeded_ = false; // Reset status
+}
+
+void DecisionExecutor::sendNavigationGoalToPose(double x, double y, const std::string& label)
+{
+  if (!nav_client_->wait_for_action_server(std::chrono::seconds(5))) {
+    RCLCPP_ERROR(this->get_logger(), "Navigation action server not available!");
+    return;
+  }
+
+  auto goal_msg = NavigateToPose::Goal();
+  goal_msg.pose.header.frame_id = "map";
+  goal_msg.pose.header.stamp = this->now();
+  goal_msg.pose.pose.position.x = x;
+  goal_msg.pose.pose.position.y = y;
+  goal_msg.pose.pose.position.z = 0.0;
+  goal_msg.pose.pose.orientation.w = 1.0;
+
+  RCLCPP_INFO(this->get_logger(), "Sending goal to %s: (%.2f, %.2f)", label.c_str(), x, y);
+
+  auto send_goal_options = rclcpp_action::Client<NavigateToPose>::SendGoalOptions();
+  send_goal_options.goal_response_callback =
+    std::bind(&DecisionExecutor::goalResponseCallback, this, std::placeholders::_1);
+  send_goal_options.feedback_callback =
+    std::bind(&DecisionExecutor::feedbackCallback, this, std::placeholders::_1, std::placeholders::_2);
+  send_goal_options.result_callback =
+    std::bind(&DecisionExecutor::resultCallback, this, std::placeholders::_1);
+
+  nav_client_->async_send_goal(goal_msg, send_goal_options);
+  goal_in_progress_ = true;
+  last_nav_succeeded_ = false;
 }
 
 void DecisionExecutor::cancelCurrentGoal()

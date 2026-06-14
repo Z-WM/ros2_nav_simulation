@@ -10,48 +10,132 @@ map_metadata:
     - 390
     - 695
 waypoints:
-  - name: 守护堡垒点
-    pixel:
-      - 388.29787234042556
-      - 805.0531833729846
-    world:
-      - -0.017
-      - -1.101
-  - name: 打符点
-    pixel:
-      - 1015.9574468085107
-      - 408.7765876283037
-    world:
-      - 6.26
-      - 2.862
-  - name: 巡逻点
-    pixel:
-      - 940.1595744680851
-      - 987.2340344368143
-    world:
-      - 5.502
-      - -2.922
   - name: 补给点
     pixel:
-      - 217.6015473887814
-      - 1291.7619064274706
+      - 233.1192660550459
+      - 1291.6710353866317
     world:
-      - -1.724
-      - -5.968
+      - -1.569
+      - -5.967
+  - name: 守护堡垒点
+    pixel:
+      - 389.25294888597637
+      - 807.9947575360419
+    world:
+      - -0.007
+      - -1.13
   - name: 前哨攻击点
     pixel:
-      - 1151.0413821769139
-      - 236.18286268512506
+      - 1167.758846657929
+      - 208.38794233289644
     world:
-      - 7.61
-      - 4.588
-zones: []
+      - 7.778
+      - 4.866
+  - name: 打符点
+    pixel:
+      - 1043.905635648755
+      - 401.04849279161203
+    world:
+      - 6.539
+      - 2.94
+  - name: 高地点
+    pixel:
+      - 1693.6936936936936
+      - 876.1261261261261
+    world:
+      - 13.037
+      - -1.811
+  - name: 途径点1
+    pixel:
+      - 453.9113428943938
+      - 1385.3976531942635
+    world:
+      - 0.639
+      - -6.904
+  - name: 途径点2
+    pixel:
+      - 1049.8044328552805
+      - 1391.8513689700133
+    world:
+      - 6.598
+      - -6.969
+zones:
+  - id: zone-1781438282320
+    name: 起伏路段加速区
+    rect:
+      x1: 390.4498044328554
+      y1: 1289.667535853977
+      x2: 1254.1720990873537
+      y2: 1490.808344198175
+    worldRect:
+      x1: 0.004
+      y1: -5.947
+      x2: 8.642
+      y2: -7.958
+    conditions: []
+    action: null
+    params:
+      - type: Param
+        node_name: controller_server
+        param_name: FollowPath.rotation_kp
+        param_value: '5.0'
+        param_type: double
+    priority: 1
+    canvasX: -497.6105371365062
+    canvasY: 248.72498999999993
 decision_tree:
   root:
     type: Selector
     children:
       - type: Sequence
         priority: 1
+        children:
+          - type: Condition
+            field: game_progress
+            value_type: uint16
+            operator: '=='
+            threshold: 4
+          - type: Zone
+            zone_id: zone-1781438282320
+            zone_name: 起伏路段加速区
+            action: null
+            conditions: []
+            params:
+              - type: Param
+                node_name: controller_server
+                param_name: FollowPath.rotation_kp
+                param_value: '5.0'
+                param_type: double
+      - type: Sequence
+        priority: 1
+        children:
+          - type: Condition
+            field: game_progress
+            value_type: uint16
+            operator: '=='
+            threshold: 4
+          - type: Condition
+            field: target_position_x
+            value_type: float32
+            operator: '!='
+            threshold: 0
+          - type: Condition
+            field: target_position_y
+            value_type: float32
+            operator: '!='
+            threshold: 0
+          - type: Action
+            action: 补给点
+          - type: Action
+            action: STOP
+            duration: 3
+          - type: Action
+            action: REFEREE_TARGET
+            actions:
+              - REFEREE_TARGET
+            loop: true
+      - type: Sequence
+        priority: 3
         children:
           - type: Condition
             field: game_progress
@@ -70,26 +154,6 @@ decision_tree:
               value_type: uint16
               operator: '>='
               threshold: 400
-      - type: Sequence
-        priority: 2
-        children:
-          - type: Condition
-            field: game_progress
-            value_type: uint16
-            operator: '=='
-            threshold: 4
-          - type: Condition
-            field: shoot_num
-            value_type: uint16
-            operator: <=
-            threshold: 30
-          - type: Action
-            action: 补给点
-            exit_condition:
-              field: shoot_num
-              value_type: uint16
-              operator: '>='
-              threshold: 100
       - type: Sequence
         priority: 3
         children:
@@ -111,7 +175,7 @@ decision_tree:
           - type: Action
             action: STOP
       - type: Sequence
-        priority: 3
+        priority: 4
         children:
           - type: Condition
             field: game_progress
@@ -119,12 +183,17 @@ decision_tree:
             operator: '=='
             threshold: 4
           - type: Condition
-            field: fortress_status
+            field: shoot_num
             value_type: uint16
-            operator: '=='
-            threshold: 2
+            operator: <=
+            threshold: 30
           - type: Action
-            action: 守护堡垒点
+            action: 补给点
+            exit_condition:
+              field: shoot_num
+              value_type: uint16
+              operator: '>='
+              threshold: 100
       - type: Sequence
         priority: 4
         children:
@@ -151,7 +220,22 @@ decision_tree:
               - 前哨攻击点
             loop: true
       - type: Sequence
-        priority: 4
+        priority: 5
+        children:
+          - type: Condition
+            field: game_progress
+            value_type: uint16
+            operator: '=='
+            threshold: 4
+          - type: Condition
+            field: fortress_status
+            value_type: uint16
+            operator: '=='
+            threshold: 2
+          - type: Action
+            action: 守护堡垒点
+      - type: Sequence
+        priority: 6
         children:
           - type: Condition
             field: game_progress

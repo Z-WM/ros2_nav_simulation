@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Stage, Layer, Image as KonvaImage, Circle, Text, Group, Rect, Line } from 'react-konva';
+import { Stage, Layer, Image as KonvaImage, Circle, Text, Group, Rect } from 'react-konva';
 import { MapMetadata, Waypoint, PixelPoint, ZoneRule } from '../types';
 import { pixelToWorld } from '../utils/coordinateCalculator';
 import * as storage from '../utils/Storage';

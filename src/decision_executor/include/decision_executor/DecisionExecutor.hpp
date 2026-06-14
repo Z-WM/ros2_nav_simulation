@@ -14,6 +14,7 @@
 #include <map>
 #include <set>
 #include <memory>
+#include <cmath>
 
 namespace decision_executor
 {
@@ -85,7 +86,11 @@ private:
   void setRemoteParameter(const ParamConfig& config);
   
   // Navigation control
+  bool hasValidRefereeTarget(const Referee& msg) const;
+  bool isSameRefereeTarget(double x, double y) const;
+  NodeStatus tickRefereeTargetAction(const Referee& msg, const void* node_ptr);
   void sendNavigationGoal(const std::string& waypoint_name);
+  void sendNavigationGoalToPose(double x, double y, const std::string& label);
   void cancelCurrentGoal();
   void goalResponseCallback(GoalHandleNav::SharedPtr goal_handle);
   void feedbackCallback(
@@ -114,7 +119,10 @@ private:
   GoalHandleNav::SharedPtr current_goal_handle_;
   bool goal_in_progress_{false};
   bool last_nav_succeeded_{false}; // Trust Nav2 result over distance check
-  
+  bool referee_target_active_{false};
+  double active_referee_target_x_{0.0};
+  double active_referee_target_y_{0.0};
+
   // Parameter clients cache
   std::map<std::string, rclcpp::AsyncParametersClient::SharedPtr> param_clients_;
   std::map<std::string, std::string> current_param_values_; // cache to avoid redundant calls

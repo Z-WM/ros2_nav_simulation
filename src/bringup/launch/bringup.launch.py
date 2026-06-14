@@ -66,12 +66,17 @@ def generate_launch_description():
             arguments=['0', '0', '0', '0', '0', '0', 'map', 'odom']
         ),
 
-        Node(
-            package='serial_interfaces',
-            executable='serial_interfaces',
-            name='serial_interfaces'
-        ),
-
+        IncludeLaunchDescription(
+                launch_description_source=PythonLaunchDescriptionSource([
+                    PathJoinSubstitution([
+                        FindPackageShare('serial_interfaces'),
+                        'launch',
+                        'serial_interfaces.launch.py'
+                    ])
+                ]),
+                launch_arguments={'use_sim_time': use_sim_time}.items()
+            ),
+            
         IncludeLaunchDescription(
                 launch_description_source=PythonLaunchDescriptionSource([
                     PathJoinSubstitution([

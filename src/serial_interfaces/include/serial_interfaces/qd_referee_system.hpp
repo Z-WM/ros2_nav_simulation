@@ -9,15 +9,8 @@ typedef uint8_t QElemType;
 
 /*------------------串口协议各个包详细说明------------------*/
 
-/* @brief 自瞄和导航等上位机状态枚举 */
-typedef enum 
-{
-	LOST = 0,
-	CONNECTION = 1,
-} vision_status_enum;
 /**
-  * @brief  比赛状态数据
-  * cmd:0x0001
+  * @brief  视觉状态
   */
 typedef struct
 {
@@ -55,30 +48,40 @@ typedef struct
 
 /**
   * @brief  场地事件数据
-  * cmd:0x0101
+  * cmd: 0x0101
+  * 字节偏移量: 0  |  大小: 4 (uint32_t)
   */
 typedef struct
 {
-    // bit 0-2
-    uint32_t supply_zone_non_overlap : 1;  // bit 0: 己方与兑换区不重叠的补给区占领状态
-    uint32_t supply_zone_overlap : 1;      // bit 1: 己方与兑换区重叠的补给区占领状态
-    uint32_t supply_zone_status : 1;       // bit 2: 己方补给区的占领状态（仅 RMUL 适用）
-    // bit 3-5: 己方能量机关状态
-    uint32_t small_energy_activated : 1;   // bit 3: 己方小能量机关的激活状态
-    uint32_t large_energy_activated : 1;   // bit 4: 己方大能量机关的激活状态
-    uint32_t central_highland_status : 2;  // bit 5-6: 己方中央高地的占领状态
-    // bit 7-8
-    uint32_t trapezoid_highland_status : 2; // bit 7-8: 己方梯形高地的占领状态
-    // bit 9-17
-    uint32_t last_dart_hit_time : 9;       // bit 9-17: 对方飞镖最后一次击中己方前哨站或基地的时间
-    // bit 18-20
-    uint32_t last_dart_hit_target : 3;     // bit 18-20: 对方飞镖最后一次击中己方前哨站或基地的具体目标
-    // bit 21-22
-    uint32_t center_gain_status : 2;       // bit 21-22: 中心增益点的占领状态（仅 RMUL 适用）
-    // bit 23-31: 保留位
-    uint32_t reserved : 9;                 // bit 23-31: 保留位
+    /* bit 0-2: 己方补给区占领状态 */
+    uint32_t supply_zone_status_0 : 1;      // bit 0: 己方补给区的占领状态，1为已占领
+    uint32_t reserved_bit1 : 1;             // bit 1: 保留位
+    uint32_t supply_zone_status_2 : 1;      // bit 2: 己方补给区的占领状态 (仅 RMUL 适用)
 
-}event_data_t;
+    /* bit 3-6: 己方能量机关状态 */
+    uint32_t small_energy_status : 2;       // bit 3-4: 己方小能量机关状态 (0未激活, 1已激活, 2正在激活)
+    uint32_t large_energy_status : 2;       // bit 5-6: 己方大能量机关状态 (0未激活, 1已激活, 2正在激活)
+
+    /* bit 7-10: 高地占领状态 */
+    uint32_t central_highland_status : 2;   // bit 7-8: 己方中央高地的占领状态 (1被己方占领, 2被对方占领)
+    uint32_t trapezoid_highland_status : 2; // bit 9-10: 己方梯形高地的占领状态 (1为已占领)
+
+    /* bit 11-19: 飞镖受击时间 */
+    uint32_t last_dart_hit_time : 9;        // bit 11-19: 对方飞镖最后一次击中己方前哨站或基地的时间 (0-420)
+
+    /* bit 20-22: 飞镖受击目标 */
+    uint32_t last_dart_hit_target : 3;      // bit 20-22: 对方飞镖击中的具体目标 (1前哨站, 2基地固定, 3基地随机固定, 4基地随机移动, 5基地末端移动)
+
+    /* bit 23-29: 增益点占领状态 */
+    uint32_t center_gain_status : 2;        // bit 23-24: 中心增益点 (0未占, 1己方, 2对方, 3双方) (仅 RMUL 适用)
+    uint32_t fortress_status : 2;      // bit 25-26: 己方堡垒增益点 (0未占, 1己方, 2对方, 3双方)
+    uint32_t outpost_gain_status : 2;       // bit 27-28: 己方前哨站增益点 (0未占, 1己方, 2对方)
+    uint32_t base_gain_status : 1;          // bit 29: 己方基地增益点 (1为已占领)
+
+    /* bit 30-31: 保留位 */
+    uint32_t reserved_30_31 : 2;            // bit 30-31: 保留位
+
+} event_data_t;
 
 
 /**
@@ -91,8 +94,8 @@ typedef struct
     // uint8_t robot_level;
     uint16_t current_hp;
     uint16_t maximum_hp;
-    uint16_t shooter_barrel_cooling_value;
-    uint16_t shooter_barrel_heat_limit;
+    // uint16_t shooter_barrel_cooling_value;
+    // uint16_t shooter_barrel_heat_limit;
     // uint16_t chassis_power_limit;
 } robot_status_t;
 
@@ -114,12 +117,10 @@ typedef struct
 typedef struct
 {
     // uint8_t recovery_buff;      // 机器人回血增益（百分比，值为 10 表示每秒恢复血量上限的 10%）
-    uint8_t cooling_buff;       // 机器人枪口冷却倍率（直接值，值为 5 表示 5 倍冷却）
+    // uint8_t cooling_buff;       // 机器人枪口冷却倍率（直接值，值为 5 表示 5 倍冷却）
     uint8_t defence_buff;       // 机器人防御增益（百分比，值为 50 表示 50%防御增益）
     uint8_t vulnerability_buff; // 机器人负防御增益（百分比，值为 30 表示-30%防御增益）
     uint16_t attack_buff;       // 机器人攻击增益（百分比，值为 50 表示 50%攻击增益）
-    uint8_t remaining_energy;  //机器人剩余能量值反馈
-
 }buff_t;
 
 /**
@@ -178,8 +179,8 @@ typedef struct
     // uint32_t road_above_opponent : 1;           // bit 16: 对方地形跨越增益点（公路上方）
     // uint32_t fortress_gain_self : 1;            // bit 17: 己方堡垒增益点
     // uint32_t outpost_gain_self : 1;             // bit 18: 己方前哨站增益点
-    // uint32_t supply_zone_non_overlap : 1;       // bit 19: 己方与兑换区不重叠的补给区
-    // uint32_t supply_zone_overlap : 1;           // bit 20: 己方与兑换区重叠的补给区
+    uint32_t supply_zone_non_overlap : 1;       // bit 19: 己方与兑换区不重叠的补给区
+    uint32_t supply_zone_overlap : 1;           // bit 20: 己方与兑换区重叠的补给区
     // uint32_t large_island_gain_self : 1;        // bit 21: 己方大资源岛增益点
     // uint32_t large_island_gain_opponent : 1;    // bit 22: 对方大资源岛增益点
     // uint32_t center_gain : 1;                  // bit 23: 中心增益点（仅 RMUL 适用）
@@ -189,7 +190,14 @@ typedef struct
     uint32_t rfid_status;
 } rfid_status_t; 
 
-
+typedef struct
+{
+ float target_position_x;
+ float target_position_y;
+ uint8_t cmd_keyboard;
+ uint8_t target_robot_id;
+ uint16_t cmd_source;
+}map_command_t; 
 /*
  * @brief 串口协议对应命令ID
 */
@@ -204,6 +212,7 @@ typedef enum
 	CMD_hurt_data_t                       = 0x0206,
 	CMD_projectile_allowance_t            = 0x0208,
 	CMD_rfid_status_t                     = 0x0209,
+  CMD_map_command_t                     = 0x0303,
   CMD_vision_status_t                   = 0x0401
 } CmdID;
 

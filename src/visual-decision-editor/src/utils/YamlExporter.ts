@@ -1,5 +1,5 @@
 import yaml from 'js-yaml';
-import { MapMetadata, Waypoint } from '../types';
+import { MapMetadata, Waypoint, ZoneRule } from '../types';
 
 /**
  * Export complete configuration to YAML format

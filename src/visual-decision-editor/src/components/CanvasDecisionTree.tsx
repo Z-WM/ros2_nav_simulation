@@ -1,6 +1,6 @@
 import React from 'react';
 import { Stage, Layer, Rect, Text, Line, Group } from 'react-konva';
-import { Waypoint, ZoneRule, REFEREE_FIELD_TYPES } from '../types';
+import { Waypoint, ZoneRule, REFEREE_FIELD_TYPES, REFEREE_TARGET_ACTION, REFEREE_TARGET_ACTION_LABEL } from '../types';
 import { ComparisonOperator } from '../types';
 
 interface DecisionTreeNode {
@@ -38,7 +38,7 @@ const DEFAULT_FIELDS: CustomField[] = Object.entries(REFEREE_FIELD_TYPES).map(
     ([name, type]) => ({ name, type })
 );
 
-export const CanvasDecisionTree = React.forwardRef<any, CanvasDecisionTreeProps>(({ waypoints, zones = [], onZonesChange, onNodesChange }, ref) => {
+export const CanvasDecisionTree = React.forwardRef<any, CanvasDecisionTreeProps>(({ waypoints, zones = [], onNodesChange }, ref) => {
 
     const [nodes, setNodes] = React.useState<DecisionTreeNode[]>(() => {
         const saved = localStorage.getItem(STORAGE_KEY_NODES);
@@ -69,6 +69,24 @@ export const CanvasDecisionTree = React.forwardRef<any, CanvasDecisionTreeProps>
     const NODE_HEIGHT = 90;
 
     const selectedNode = selectedNodeId ? nodes.find(n => n.id === selectedNodeId) : null;
+
+    const formatActionLabel = (action: string) => {
+        if (action === 'STOP') return '🛑 停止';
+        if (action === REFEREE_TARGET_ACTION) return `📡 ${REFEREE_TARGET_ACTION_LABEL}`;
+        return `📍 ${action}`;
+    };
+
+    const renderActionOptions = (includePrefix: boolean = true) => (
+        <>
+            <option value="STOP">🛑 停止导航</option>
+            <option value={REFEREE_TARGET_ACTION}>📡 {REFEREE_TARGET_ACTION_LABEL}</option>
+            {waypoints.map(wp => (
+                <option key={wp.name} value={wp.name}>{includePrefix ? `📍 前往 ${wp.name}` : wp.name}</option>
+            ))}
+        </>
+    );
+
+    const defaultAction = () => waypoints.length > 0 ? waypoints[0].name : 'STOP';
 
     // Auto-save nodes to localStorage on every change
     React.useEffect(() => {
@@ -158,7 +176,7 @@ export const CanvasDecisionTree = React.forwardRef<any, CanvasDecisionTreeProps>
         if (type === 'condition') {
             data = { field: customFields[0]?.name || 'own_robot_hp', value_type: customFields[0]?.type || 'uint16', operator: '<', threshold: 500, priority: nodes.filter(n => n.type === 'condition').length + 1 };
         } else if (type === 'action') {
-            data = { action: waypoints.length > 0 ? waypoints[0].name : 'STOP', duration: 0 };
+            data = { action: defaultAction(), duration: 0 };
         } else if (type === 'param') {
             data = { node_name: '/serial_interfaces', param_name: 'alpha1', param_value: '0.2', param_type: 'double' };
         } else if (type === 'zone') {
@@ -240,20 +258,18 @@ export const CanvasDecisionTree = React.forwardRef<any, CanvasDecisionTreeProps>
                 const loopIcon = node.data.loop ? ' 🔄' : '';
                 const firstAction = node.data.actions[0];
                 if (count > 1) {
-                    label = `🚀 动作组 (${count})${loopIcon}\n1. ${firstAction}...`;
+                    label = `🚀 动作组 (${count})${loopIcon}\n1. ${formatActionLabel(firstAction)}...`;
                 } else {
-                    const actionText = firstAction === 'STOP' ? '🛑 停止' : `📍 ${firstAction}`;
-                    label = `🎯 ${actionText}${loopIcon}`;
+                    label = `🎯 ${formatActionLabel(firstAction)}${loopIcon}`;
                 }
             } else {
-                const actionText = node.data.action === 'STOP' ? '🛑 停止' : `📍 ${node.data.action}`;
-                label = `🎯 ${actionText}`;
+                label = `🎯 ${formatActionLabel(node.data.action)}`;
             }
         } else if (node.type === 'zone') {
             fillColor = isSelected ? '#c3f0ea' : '#e0faf6';
             strokeColor = '#00b4a6';
             const condCount = node.data.conditions?.length ?? 0;
-            const actName = node.data.action?.action || '未设置';
+            const actName = node.data.action?.action ? formatActionLabel(node.data.action.action) : '未设置';
             const paramCount = node.data.params?.length ?? 0;
             label = `🗺️ ${node.data.zone_name}\n▸ ${condCount}条件 · ${actName} · ${paramCount}参数`;
         } else {
@@ -706,10 +722,7 @@ export const CanvasDecisionTree = React.forwardRef<any, CanvasDecisionTreeProps>
                                         value={selectedNode.data.action}
                                         onChange={(e) => updateNodeData(selectedNode.id, { ...selectedNode.data, action: e.target.value })}
                                     >
-                                        <option value="STOP">🛑 停止导航</option>
-                                        {waypoints.map(wp => (
-                                            <option key={wp.name} value={wp.name}>📍 前往 {wp.name}</option>
-                                        ))}
+                                        {renderActionOptions(true)}
                                     </select>
                                 </div>
                             ) : (
@@ -731,10 +744,7 @@ export const CanvasDecisionTree = React.forwardRef<any, CanvasDecisionTreeProps>
                                                     }}
                                                     style={{ flex: 1 }}
                                                 >
-                                                    <option value="STOP">🛑 停止</option>
-                                                    {waypoints.map(wp => (
-                                                        <option key={wp.name} value={wp.name}>{wp.name}</option>
-                                                    ))}
+                                                    {renderActionOptions(false)}
                                                 </select>
                                                 <button
                                                     onClick={() => {
@@ -752,7 +762,7 @@ export const CanvasDecisionTree = React.forwardRef<any, CanvasDecisionTreeProps>
                                     </div>
                                     <button
                                         onClick={() => {
-                                            const newActions = [...selectedNode.data.actions, waypoints[0]?.name || 'STOP'];
+                                            const newActions = [...selectedNode.data.actions, defaultAction()];
                                             updateNodeData(selectedNode.id, { ...selectedNode.data, actions: newActions });
                                         }}
                                         className="add-sub-btn add-sub-action"
@@ -975,7 +985,7 @@ export const CanvasDecisionTree = React.forwardRef<any, CanvasDecisionTreeProps>
                                         {!zd.action && (
                                             <button
                                                 className="add-sub-btn add-sub-action"
-                                                onClick={() => upd({ action: { type: 'Action', action: waypoints[0]?.name || 'STOP', loop: false, duration: 0 } })}
+                                                onClick={() => upd({ action: { type: 'Action', action: defaultAction(), loop: false, duration: 0 } })}
                                             >+ 设置</button>
                                         )}
                                     </div>
@@ -988,8 +998,7 @@ export const CanvasDecisionTree = React.forwardRef<any, CanvasDecisionTreeProps>
                                                     <label style={{ fontSize: '0.78rem', color: '#64748b', display: 'block', marginBottom: '0.25rem' }}>目标位置:</label>
                                                     <select className="zone-action-select" value={zd.action.action}
                                                         onChange={e => upd({ action: { ...zd.action, action: e.target.value } })}>
-                                                        <option value="STOP">🛑 停止导航</option>
-                                                        {waypoints.map((wp: Waypoint) => <option key={wp.name} value={wp.name}>📍 {wp.name}</option>)}
+                                                        {renderActionOptions(false)}
                                                     </select>
                                                 </div>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1069,9 +1078,9 @@ export const CanvasDecisionTree = React.forwardRef<any, CanvasDecisionTreeProps>
                                 <div className="connection-list">
                                     {nodes.filter(n => n.children.includes(selectedNode.id)).map(parent => (
                                         <div key={parent.id} className="connection-item">
-                                            <span className="connection-label" title={parent.type === 'zone' ? parent.data.zone_name : parent.type === 'action' ? (parent.data.action === 'STOP' ? '🛑 停止' : `📍 ${parent.data.action}`) : parent.type === 'condition' ? `⚡ 条件 (优先:${parent.data.priority})` : '🔧 参数'}>
-                                                {parent.type === 'zone' ? `🗺️ ${parent.data.zone_name}` : 
-                                                 parent.type === 'action' ? (parent.data.action === 'STOP' ? '🛑 停止' : `📍 ${parent.data.action}`) : 
+                                            <span className="connection-label" title={parent.type === 'zone' ? parent.data.zone_name : parent.type === 'action' ? formatActionLabel(parent.data.action) : parent.type === 'condition' ? `⚡ 条件 (优先:${parent.data.priority})` : '🔧 参数'}>
+                                                {parent.type === 'zone' ? `🗺️ ${parent.data.zone_name}` :
+                                                 parent.type === 'action' ? formatActionLabel(parent.data.action) :
                                                  parent.type === 'condition' ? `⚡ 条件 (优先:${parent.data.priority})` : '🔧 参数'}
                                             </span>
                                             <button 
@@ -1097,9 +1106,9 @@ export const CanvasDecisionTree = React.forwardRef<any, CanvasDecisionTreeProps>
                                         if (!child) return null;
                                         return (
                                             <div key={childId} className="connection-item">
-                                                <span className="connection-label" title={child.type === 'zone' ? child.data.zone_name : child.type === 'action' ? (child.data.action === 'STOP' ? '🛑 停止' : `📍 ${child.data.action}`) : child.type === 'condition' ? `⚡ 条件 (优先:${child.data.priority})` : '🔧 参数'}>
-                                                    {child.type === 'zone' ? `🗺️ ${child.data.zone_name}` : 
-                                                     child.type === 'action' ? (child.data.action === 'STOP' ? '🛑 停止' : `📍 ${child.data.action}`) : 
+                                                <span className="connection-label" title={child.type === 'zone' ? child.data.zone_name : child.type === 'action' ? formatActionLabel(child.data.action) : child.type === 'condition' ? `⚡ 条件 (优先:${child.data.priority})` : '🔧 参数'}>
+                                                    {child.type === 'zone' ? `🗺️ ${child.data.zone_name}` :
+                                                     child.type === 'action' ? formatActionLabel(child.data.action) :
                                                      child.type === 'condition' ? `⚡ 条件 (优先:${child.data.priority})` : '🔧 参数'}
                                                 </span>
                                                 <button 

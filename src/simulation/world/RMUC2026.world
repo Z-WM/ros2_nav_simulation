@@ -91,7 +91,7 @@
       <heading_deg>0</heading_deg>
     </spherical_coordinates>
     <model name='Untitled'>
-      <link name='link_0'>
+      <link name='link_1'>
         <inertial>
           <mass>1</mass>
           <inertia>
@@ -113,7 +113,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/z/ros2_nav_simulation/src/simulation/model/RMUC2026/rmuc_2026 .stl</uri>
+              <uri>/root/ros2_nav_simulation/src/simulation/model/RMUC2026/rmuc_2026.stl</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -140,7 +140,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/z/ros2_nav_simulation/src/simulation/model/RMUC2026/rmuc_2026 .stl</uri>
+              <uri>/root/ros2_nav_simulation/src/simulation/model/RMUC2026/rmuc_2026.stl</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -194,17 +194,16 @@
       <static>0</static>
       <allow_auto_disable>1</allow_auto_disable>
       <pose>10.1 -0.5 -0.45 0 -0 0</pose>
-      <enable_wind>0</enable_wind>
     </model>
     <state world_name='default'>
-      <sim_time>9 569000000</sim_time>
-      <real_time>9 608274738</real_time>
-      <wall_time>1780731897 162801728</wall_time>
-      <iterations>9569</iterations>
+      <sim_time>5 354000000</sim_time>
+      <real_time>5 367949094</real_time>
+      <wall_time>1780992042 714061792</wall_time>
+      <iterations>5354</iterations>
       <model name='Untitled'>
         <pose>10.1 -0.5 -0.45 0 -0 0</pose>
         <scale>1 1 1</scale>
-        <link name='link_0'>
+        <link name='link_1'>
           <pose>10.1 -0.5 -0.45 0 -0 0</pose>
           <velocity>0 0 0 0 -0 0</velocity>
           <acceleration>0 0 0 0 -0 0</acceleration>
@@ -227,7 +226,7 @@
     </state>
     <gui fullscreen='0'>
       <camera name='user_camera'>
-        <pose>7.50075 -23.6331 100.435 0 1.31964 3.13219</pose>
+        <pose>18.4117 -2.44968 69.7776 0 1.19564 -2.89099</pose>
         <view_controller>orbit</view_controller>
         <projection_type>perspective</projection_type>
       </camera>

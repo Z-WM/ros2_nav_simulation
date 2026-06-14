@@ -80,6 +80,11 @@ private:
     void RecvDataPacketHandle(uint8_t *buffer_data);
     void SendDataPacket(uint8_t *pbuf, uint8_t len);
 
+    // 姿态切换逻辑变量
+    int current_stance = -1; // -1: 未知, 1: 攻击, 2: 防御, 0: 移动
+    int pending_stance = -1;
+    rclcpp::Time pending_stance_start;
+
     // ROS2 回调
     void CmdVelCallback(const geometry_msgs::msg::Twist::SharedPtr msg);
 
@@ -93,28 +98,27 @@ private:
     hurt_data_t hurt_data;
     projectile_allowance_t projectile_allowance;
     rfid_status_t rfid_status;
+    map_command_t map_command;
     vision_status_t vision_status;
+    uint16_t obtainable_shoot_num = 0;//可获取发弹量
+    int obtained_shoot_num = 0;//已获取发弹量
 
-    // --- 逻辑状态变量 (原 .cpp 中的 static 变量成员化) ---
-    geometry_msgs::msg::Twist last_cmd_vel;
-    rclcpp::Time last_cmd_time;
-    rclcpp::Time last_dead_time;
-    
-    // 姿态切换逻辑变量
-    int current_stance = -1; // -1: 未知, 1: 攻击, 2: 防御, 0: 移动
-    int pending_stance = -1;
-    rclcpp::Time pending_stance_start;
-    
+    rclcpp::Time last_hurt_time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
+    uint16_t last_hp_ = 0;
+
     // ROS2 通信对象
     rclcpp::Publisher<sentry_msgs::msg::Referee>::SharedPtr referee_pub_;
+    rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sim_pub_;
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
-    rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr sim_cmd_vel_pub_;
-    std::shared_ptr<rclcpp::AsyncParametersClient> parameters_client_;
+
+    bool simulation_mode_ = false;
+    std::string cmd_vel_sim_topic_ = "/cmd_vel_sim";
+
     std::thread serial_thread_;
     uint8_t rx_con_ = 0;
     uint8_t rx_buf_[64];
     uint8_t rx_checksum_ = 0;
-    
+
     // 话题定义
     std::string cmd_vel_topic_;
     std::string referee_topic_;

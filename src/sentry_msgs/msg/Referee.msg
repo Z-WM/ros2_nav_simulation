@@ -39,3 +39,9 @@ uint16 rune_statues
 uint16 fortress_status
 uint16 event_data
 uint16 center_gain_status
+# === 小地图交互 (Map Interaction) ===
+float32 target_position_x
+float32 target_position_y
+uint8 cmd_keyboard
+uint8 target_robot_id
+uint16 cmd_source
