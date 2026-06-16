@@ -1,5 +1,5 @@
 import yaml from 'js-yaml';
-import { MapMetadata, Waypoint } from '../types';
+import { MapMetadata, Waypoint, rectToPoints } from '../types';
 
 interface ImportedConfig {
     map_metadata?: {
@@ -63,7 +63,8 @@ export function importFromYaml(yamlContent: string): ImportResult {
     }
 
     // Parse zones and recreate zone nodes if they have canvas positions or logic
-    const zones = config.zones || [];
+    // Normalize zones: convert old rect-only format to polygon format
+    const zones = (config.zones || []).map(normalizeZone);
     zones.forEach((z, idx) => {
         const hasLogic = z.action || (z.conditions && z.conditions.length > 0) || (z.params && z.params.length > 0);
         const hasPos = z.canvasX !== undefined && z.canvasY !== undefined;
@@ -92,6 +93,28 @@ export function importFromYaml(yamlContent: string): ImportResult {
     });
 
     return { metadata, waypoints, zones, decisionNodes };
+}
+
+// ─── Zone normalization (backward compat) ────────────────────────────────
+
+/**
+ * Normalize a zone: if it only has rect/worldRect (old format),
+ * convert to polygon format by adding points/worldPoints.
+ */
+function normalizeZone(z: any): any {
+    // If zone already has points, keep them
+    if (z.points && z.points.length >= 6) {
+        return z;
+    }
+    // Convert from rect (backward compat)
+    if (z.rect) {
+        return {
+            ...z,
+            points: rectToPoints(z.rect),
+            worldPoints: z.worldRect ? rectToPoints(z.worldRect) : [],
+        };
+    }
+    return z;
 }
 
 // ─── Trie-based node merging ───────────────────────────────────────────────

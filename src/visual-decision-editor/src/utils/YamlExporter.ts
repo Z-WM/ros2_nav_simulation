@@ -1,5 +1,5 @@
 import yaml from 'js-yaml';
-import { MapMetadata, Waypoint, ZoneRule } from '../types';
+import { MapMetadata, Waypoint, ZoneRule, rectToPoints } from '../types';
 
 /**
  * Export complete configuration to YAML format
@@ -17,8 +17,9 @@ export function exportToYaml(
     // Sync zone nodes data from canvas back to the zones definition list
     const updatedZones = zones.map(z => {
         const zoneNode = nodes.find(n => n.type === 'zone' && n.data.zone_id === z.id);
+        let synced = z;
         if (zoneNode) {
-            return {
+            synced = {
                 ...z,
                 action: zoneNode.data.action || null,
                 conditions: zoneNode.data.conditions || [],
@@ -28,7 +29,16 @@ export function exportToYaml(
                 canvasY: zoneNode.y
             };
         }
-        return z;
+        // Ensure worldPoints is always populated for C++ consumption
+        return {
+            ...synced,
+            worldPoints: synced.worldPoints && synced.worldPoints.length >= 6
+                ? synced.worldPoints
+                : (synced.worldRect ? rectToPoints(synced.worldRect) : []),
+            points: synced.points && synced.points.length >= 6
+                ? synced.points
+                : (synced.rect ? rectToPoints(synced.rect) : []),
+        };
     });
 
     const config: any = {

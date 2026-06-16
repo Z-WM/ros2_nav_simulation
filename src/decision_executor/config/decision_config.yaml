@@ -59,6 +59,13 @@ waypoints:
     world:
       - 6.598
       - -6.969
+  - name: 高地守护堡垒点
+    pixel:
+      - 1092.362344582593
+      - 751.3321492007104
+    world:
+      - 7.024
+      - -0.563
 zones:
   - id: zone-1781438282320
     name: 起伏路段加速区
@@ -80,9 +87,109 @@ zones:
         param_name: FollowPath.rotation_kp
         param_value: '5.0'
         param_type: double
+      - type: Param
+        node_name: serial_interfaces
+        param_name: vel_spin
+        param_value: '0.0'
+        param_type: double
     priority: 1
-    canvasX: -497.6105371365062
-    canvasY: 248.72498999999993
+    canvasX: -190.69239000000073
+    canvasY: 180.33694000000003
+    worldPoints:
+      - 0.004
+      - -5.947
+      - 8.642
+      - -5.947
+      - 8.642
+      - -7.958
+      - 0.004
+      - -7.958
+    points:
+      - 390.4498044328554
+      - 1289.667535853977
+      - 1254.1720990873537
+      - 1289.667535853977
+      - 1254.1720990873537
+      - 1490.808344198175
+      - 390.4498044328554
+      - 1490.808344198175
+  - id: zone-1781579328379
+    name: 高地区
+    rect:
+      x1: 975.1998223801068
+      y1: 199.8756660746004
+      x2: 1824.6714031971583
+      y2: 1292.7442273534637
+    worldRect:
+      x1: 5.852
+      y1: -5.977
+      x2: 14.347
+      y2: 4.951
+    points:
+      - 975.1998223801068
+      - 1284.6847246891653
+      - 1545.8126110124335
+      - 1292.7442273534637
+      - 1789.2095914742454
+      - 944.5737122557728
+      - 1785.985790408526
+      - 509.36056838365903
+      - 1740.852575488455
+      - 390.0799289520427
+      - 1744.0763765541742
+      - 322.3801065719361
+      - 1824.6714031971583
+      - 214.3827708703375
+      - 1254.0586145648315
+      - 199.8756660746004
+      - 1005.8259325044406
+      - 551.2699822380107
+      - 1005.8259325044406
+      - 978.423623445826
+      - 1052.5710479573713
+      - 1097.7042628774425
+      - 1050.9591474245117
+      - 1168.6278863232683
+    worldPoints:
+      - 5.852
+      - -5.897
+      - 11.558
+      - -5.977
+      - 13.992
+      - -2.496
+      - 13.96
+      - 1.856
+      - 13.509
+      - 3.049
+      - 13.541
+      - 3.726
+      - 14.347
+      - 4.806
+      - 8.641
+      - 4.951
+      - 6.158
+      - 1.437
+      - 6.158
+      - -2.834
+      - 6.626
+      - -4.027
+      - 6.61
+      - -4.736
+    conditions:
+      - type: Condition
+        field: fortress_status
+        value_type: uint16
+        operator: '=='
+        threshold: 2
+    action:
+      type: Action
+      action: 高地守护堡垒点
+      loop: false
+      duration: 0
+    params: []
+    priority: 2
+    canvasX: 120
+    canvasY: 190
 decision_tree:
   root:
     type: Selector
@@ -106,8 +213,36 @@ decision_tree:
                 param_name: FollowPath.rotation_kp
                 param_value: '5.0'
                 param_type: double
+              - type: Param
+                node_name: serial_interfaces
+                param_name: vel_spin
+                param_value: '0.0'
+                param_type: double
       - type: Sequence
-        priority: 1
+        priority: 2
+        children:
+          - type: Condition
+            field: game_progress
+            value_type: uint16
+            operator: '=='
+            threshold: 4
+          - type: Zone
+            zone_id: zone-1781579328379
+            zone_name: 高地区
+            action:
+              type: Action
+              action: 高地守护堡垒点
+              loop: false
+              duration: 0
+            conditions:
+              - type: Condition
+                field: fortress_status
+                value_type: uint16
+                operator: '=='
+                threshold: 2
+            params: []
+      - type: Sequence
+        priority: 3
         children:
           - type: Condition
             field: game_progress
@@ -128,34 +263,19 @@ decision_tree:
             action: 补给点
           - type: Action
             action: STOP
-            duration: 3
+            duration: 2
+            exit_condition:
+              field: current_hp
+              value_type: uint16
+              operator: '>='
+              threshold: 400
           - type: Action
             action: REFEREE_TARGET
             actions:
               - REFEREE_TARGET
             loop: true
       - type: Sequence
-        priority: 3
-        children:
-          - type: Condition
-            field: game_progress
-            value_type: uint16
-            operator: '=='
-            threshold: 4
-          - type: Condition
-            field: current_hp
-            value_type: uint16
-            operator: <
-            threshold: 150
-          - type: Action
-            action: 补给点
-            exit_condition:
-              field: current_hp
-              value_type: uint16
-              operator: '>='
-              threshold: 400
-      - type: Sequence
-        priority: 3
+        priority: 4
         children:
           - type: Condition
             field: game_progress
@@ -183,6 +303,41 @@ decision_tree:
             operator: '=='
             threshold: 4
           - type: Condition
+            field: fortress_status
+            value_type: uint16
+            operator: '=='
+            threshold: 2
+          - type: Action
+            action: 守护堡垒点
+      - type: Sequence
+        priority: 5
+        children:
+          - type: Condition
+            field: game_progress
+            value_type: uint16
+            operator: '=='
+            threshold: 4
+          - type: Condition
+            field: current_hp
+            value_type: uint16
+            operator: <
+            threshold: 150
+          - type: Action
+            action: 补给点
+            exit_condition:
+              field: current_hp
+              value_type: uint16
+              operator: '>='
+              threshold: 400
+      - type: Sequence
+        priority: 6
+        children:
+          - type: Condition
+            field: game_progress
+            value_type: uint16
+            operator: '=='
+            threshold: 4
+          - type: Condition
             field: shoot_num
             value_type: uint16
             operator: <=
@@ -195,7 +350,7 @@ decision_tree:
               operator: '>='
               threshold: 100
       - type: Sequence
-        priority: 4
+        priority: 7
         children:
           - type: Condition
             field: game_progress
@@ -203,7 +358,7 @@ decision_tree:
             operator: '=='
             threshold: 4
           - type: Condition
-            field: rune_statues
+            field: fortress_status
             value_type: uint16
             operator: '!='
             threshold: 2
@@ -220,7 +375,7 @@ decision_tree:
               - 前哨攻击点
             loop: true
       - type: Sequence
-        priority: 5
+        priority: 7
         children:
           - type: Condition
             field: game_progress
@@ -229,21 +384,6 @@ decision_tree:
             threshold: 4
           - type: Condition
             field: fortress_status
-            value_type: uint16
-            operator: '=='
-            threshold: 2
-          - type: Action
-            action: 守护堡垒点
-      - type: Sequence
-        priority: 6
-        children:
-          - type: Condition
-            field: game_progress
-            value_type: uint16
-            operator: '=='
-            threshold: 4
-          - type: Condition
-            field: rune_statues
             value_type: uint16
             operator: '!='
             threshold: 2

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Stage, Layer, Image as KonvaImage, Circle, Text, Group, Rect } from 'react-konva';
-import { MapMetadata, Waypoint, PixelPoint, ZoneRule } from '../types';
+import { Stage, Layer, Image as KonvaImage, Circle, Text, Group, Line } from 'react-konva';
+import { MapMetadata, Waypoint, PixelPoint, ZoneRule, rectToPoints, pointsToRect } from '../types';
 import { pixelToWorld } from '../utils/coordinateCalculator';
 import * as storage from '../utils/Storage';
 
@@ -43,9 +43,9 @@ export const MapEditor: React.FC<MapEditorProps> = ({
     const [iconSize, setIconSize] = useState(12);
     const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
 
-    // Zone drawing state
-    const [drawStart, setDrawStart] = useState<PixelPoint | null>(null);
-    const [drawCurrent, setDrawCurrent] = useState<PixelPoint | null>(null);
+    // Zone drawing state (polygon mode)
+    const [polygonPoints, setPolygonPoints] = useState<number[]>([]); // accumulated vertices [x1,y1, x2,y2, ...]
+    const [polygonPreview, setPolygonPreview] = useState<{ x: number; y: number } | null>(null); // live cursor position
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const stageRef = useRef<any>(null);
@@ -178,54 +178,44 @@ export const MapEditor: React.FC<MapEditorProps> = ({
         };
     };
 
-    // Mouse handlers for zone drawing
-    const handleMouseDown = (e: any) => {
-        if (mode !== 'draw_zone' || !image) return;
-        const stage = e.target.getStage();
-        const px = pointerToPixel(stage);
-        setDrawStart(px);
-        setDrawCurrent(px);
-    };
-
-    const handleMouseMove = (e: any) => {
-        if (mode !== 'draw_zone' || !drawStart) return;
-        const stage = e.target.getStage();
-        setDrawCurrent(pointerToPixel(stage));
-    };
-
-    const handleMouseUp = (e: any) => {
-        if (mode !== 'draw_zone' || !drawStart) return;
-        const stage = e.target.getStage();
-        const end = pointerToPixel(stage);
-
-        // Normalise rect
-        const x1 = Math.min(drawStart.u, end.u);
-        const y1 = Math.min(drawStart.v, end.v);
-        const x2 = Math.max(drawStart.u, end.u);
-        const y2 = Math.max(drawStart.v, end.v);
-
-        setDrawStart(null);
-        setDrawCurrent(null);
-
-        if (Math.abs(x2 - x1) < 5 || Math.abs(y2 - y1) < 5) return; // too small
+    // Finish polygon drawing and create zone
+    const finishPolygon = () => {
+        if (polygonPoints.length < 6) return; // need at least 3 vertices
 
         const name = prompt('请输入区域名称:');
-        if (!name) return;
+        if (!name) {
+            setPolygonPoints([]);
+            setPolygonPreview(null);
+            return;
+        }
 
         const origin = metadata.originPixel;
         const res = metadata.resolution;
-        const worldRect = origin ? {
-            x1: parseFloat(((x1 - origin.u) * res).toFixed(3)),
-            y1: parseFloat(((origin.v - y1) * res).toFixed(3)),
-            x2: parseFloat(((x2 - origin.u) * res).toFixed(3)),
-            y2: parseFloat(((origin.v - y2) * res).toFixed(3)),
-        } : { x1: 0, y1: 0, x2: 0, y2: 0 };
+
+        // Compute worldPoints
+        const worldPoints: number[] = [];
+        for (let i = 0; i < polygonPoints.length; i += 2) {
+            const u = polygonPoints[i];
+            const v = polygonPoints[i + 1];
+            if (origin) {
+                worldPoints.push(parseFloat(((u - origin.u) * res).toFixed(3)));
+                worldPoints.push(parseFloat(((origin.v - v) * res).toFixed(3)));
+            } else {
+                worldPoints.push(0, 0);
+            }
+        }
+
+        // Compute bounding rect for backward compat
+        const rect = pointsToRect(polygonPoints);
+        const worldRect = origin ? pointsToRect(worldPoints) : { x1: 0, y1: 0, x2: 0, y2: 0 };
 
         const newZone: ZoneRule = {
             id: `zone-${Date.now()}`,
             name,
-            rect: { x1, y1, x2, y2 },
+            rect,
             worldRect,
+            points: polygonPoints,
+            worldPoints,
             conditions: [],
             action: null,
             params: [],
@@ -233,13 +223,62 @@ export const MapEditor: React.FC<MapEditorProps> = ({
         };
 
         onZonesChange([...zones, newZone]);
+        setPolygonPoints([]);
+        setPolygonPreview(null);
         setMode('none');
     };
+
+    // Mouse handlers for zone drawing (polygon mode)
+    const handleMouseDown = (e: any) => {
+        if (mode !== 'draw_zone' || !image) return;
+        const stage = e.target.getStage();
+        const px = pointerToPixel(stage);
+
+        // Check if click is near the first vertex (within 8px) to close the polygon
+        if (polygonPoints.length >= 6) { // at least 3 vertices
+            const firstX = polygonPoints[0];
+            const firstY = polygonPoints[1];
+            const dist = Math.sqrt((px.u - firstX) ** 2 + (px.v - firstY) ** 2);
+            if (dist < 8) {
+                finishPolygon();
+                return;
+            }
+        }
+
+        // Add vertex
+        setPolygonPoints(prev => [...prev, px.u, px.v]);
+    };
+
+    const handleMouseMove = (e: any) => {
+        if (mode !== 'draw_zone' || polygonPoints.length === 0) return;
+        const stage = e.target.getStage();
+        const px = pointerToPixel(stage);
+        setPolygonPreview({ x: px.u, y: px.v });
+    };
+
+    // Double-click to close polygon
+    const handleStageDblClick = (_e: any) => {
+        if (mode === 'draw_zone' && polygonPoints.length >= 6) {
+            finishPolygon();
+        }
+    };
+
+    // Escape key to cancel polygon drawing
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && mode === 'draw_zone' && polygonPoints.length > 0) {
+                setPolygonPoints([]);
+                setPolygonPreview(null);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [mode, polygonPoints]);
 
     // Handle canvas click (for origin/waypoint modes)
     const handleStageClick = (e: any) => {
         if (!image || !e.target.getStage()) return;
-        if (mode === 'draw_zone') return; // handled by mouseUp
+        if (mode === 'draw_zone') return; // handled by handleMouseDown
 
         const stage = e.target.getStage();
         const px = pointerToPixel(stage);
@@ -313,14 +352,6 @@ export const MapEditor: React.FC<MapEditorProps> = ({
         onWaypointsChange(updatedWaypoints);
         saveWaypoints(updatedWaypoints);
     };
-
-    // Preview rect in pixel space
-    const previewRect = drawStart && drawCurrent ? {
-        x: Math.min(drawStart.u, drawCurrent.u),
-        y: Math.min(drawStart.v, drawCurrent.v),
-        w: Math.abs(drawCurrent.u - drawStart.u),
-        h: Math.abs(drawCurrent.v - drawStart.v)
-    } : null;
 
     const hasSidebar = waypoints.length > 0 || zones.length > 0;
 
@@ -497,7 +528,7 @@ export const MapEditor: React.FC<MapEditorProps> = ({
                         onWheel={handleWheel}
                         onMouseDown={handleMouseDown}
                         onMouseMove={handleMouseMove}
-                        onMouseUp={handleMouseUp}
+                        onDblClick={handleStageDblClick}
                         style={{
                             cursor: mode === 'set_origin' || mode === 'add_waypoint'
                                 ? 'crosshair'
@@ -521,21 +552,23 @@ export const MapEditor: React.FC<MapEditorProps> = ({
                                 {/* Draw Zones */}
                                 {zones.map((zone, idx) => {
                                     const color = ZONE_COLORS[idx % ZONE_COLORS.length];
-                                    const { x1, y1, x2, y2 } = zone.rect;
+                                    const pts = zone.points && zone.points.length >= 6
+                                        ? zone.points
+                                        : rectToPoints(zone.rect); // backward compat
                                     return (
                                         <React.Fragment key={zone.id}>
-                                            <Rect
-                                                x={x1} y={y1}
-                                                width={x2 - x1} height={y2 - y1}
+                                            <Line
+                                                points={pts}
                                                 fill={color}
                                                 opacity={0.25}
                                                 stroke={color}
                                                 strokeWidth={2 / scale}
                                                 dash={[8 / scale, 4 / scale]}
+                                                closed
                                             />
                                             <Text
-                                                x={x1 + 4 / scale}
-                                                y={y1 + 4 / scale}
+                                                x={pts[0] + 4 / scale}
+                                                y={pts[1] + 4 / scale}
                                                 text={zone.name}
                                                 fontSize={Math.max(10, iconSize * 1.2) / scale}
                                                 fill={color}
@@ -545,25 +578,56 @@ export const MapEditor: React.FC<MapEditorProps> = ({
                                     );
                                 })}
 
-                                {/* Preview rect while drawing */}
-                                {previewRect && (
+                                {/* Polygon preview while drawing */}
+                                {polygonPoints.length >= 2 && (
                                     <>
-                                        <Rect
-                                            x={previewRect.x} y={previewRect.y}
-                                            width={previewRect.w} height={previewRect.h}
-                                            fill="rgba(118,75,162,0.15)"
+                                        {/* Draw the polygon so far */}
+                                        <Line
+                                            points={polygonPoints}
                                             stroke="#764ba2"
                                             strokeWidth={2 / scale}
                                             dash={[6 / scale, 3 / scale]}
+                                            tension={0}
                                         />
-                                        {/* Corner marks */}
-                                        {[
-                                            [previewRect.x, previewRect.y],
-                                            [previewRect.x + previewRect.w, previewRect.y],
-                                            [previewRect.x, previewRect.y + previewRect.h],
-                                            [previewRect.x + previewRect.w, previewRect.y + previewRect.h]
-                                        ].map(([cx, cy], i) => (
-                                            <Circle key={i} x={cx} y={cy} radius={4 / scale} fill="#764ba2" />
+                                        {/* Live preview line from last vertex to cursor */}
+                                        {polygonPreview && (
+                                            <Line
+                                                points={[
+                                                    polygonPoints[polygonPoints.length - 2],
+                                                    polygonPoints[polygonPoints.length - 1],
+                                                    polygonPreview.x,
+                                                    polygonPreview.y
+                                                ]}
+                                                stroke="#764ba2"
+                                                strokeWidth={1.5 / scale}
+                                                dash={[4 / scale, 4 / scale]}
+                                            />
+                                        )}
+                                        {/* Preview line from cursor back to first vertex (close hint) */}
+                                        {polygonPreview && polygonPoints.length >= 4 && (
+                                            <Line
+                                                points={[
+                                                    polygonPreview.x,
+                                                    polygonPreview.y,
+                                                    polygonPoints[0],
+                                                    polygonPoints[1]
+                                                ]}
+                                                stroke="rgba(118,75,162,0.4)"
+                                                strokeWidth={1 / scale}
+                                                dash={[3 / scale, 3 / scale]}
+                                            />
+                                        )}
+                                        {/* Vertex circles */}
+                                        {Array.from({ length: polygonPoints.length / 2 }).map((_, i) => (
+                                            <Circle
+                                                key={i}
+                                                x={polygonPoints[i * 2]}
+                                                y={polygonPoints[i * 2 + 1]}
+                                                radius={4 / scale}
+                                                fill={i === 0 ? '#00ff00' : '#764ba2'} // first vertex is green
+                                                stroke="white"
+                                                strokeWidth={1 / scale}
+                                            />
                                         ))}
                                     </>
                                 )}
@@ -603,6 +667,21 @@ export const MapEditor: React.FC<MapEditorProps> = ({
                             </Group>
                         </Layer>
                     </Stage>
+
+                    {/* Drawing mode hint */}
+                    {mode === 'draw_zone' && (
+                        <div style={{
+                            position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)',
+                            background: 'rgba(118,75,162,0.9)', color: 'white', padding: '8px 16px',
+                            borderRadius: '6px', zIndex: 20, fontSize: '0.9rem', fontWeight: 600,
+                            pointerEvents: 'none'
+                        }}>
+                            {polygonPoints.length === 0
+                                ? '点击地图添加顶点，双击或点击起点闭合多边形'
+                                : `已添加 ${polygonPoints.length / 2} 个顶点，双击或点击绿色起点闭合 | Esc 取消`
+                            }
+                        </div>
+                    )}
 
                     {/* Sidebar */}
                     {hasSidebar && (
@@ -655,7 +734,7 @@ export const MapEditor: React.FC<MapEditorProps> = ({
                                                     <div>
                                                         <div style={{ fontWeight: 600, color: '#333' }}>{zone.name}</div>
                                                         <div style={{ color: '#888', fontSize: '0.78rem' }}>
-                                                            优先级 {zone.priority} · {zone.conditions.length}条件
+                                                            优先级 {zone.priority} · {zone.points && zone.points.length >= 6 ? `${zone.points.length / 2}顶点` : '矩形'} · {zone.conditions.length}条件
                                                         </div>
                                                     </div>
                                                 </div>

@@ -21,10 +21,13 @@ namespace decision_executor
 
 struct ZoneRect { double x1, y1, x2, y2; };
 struct ZoneWorldRect { double x1, y1, x2, y2; };
+using PolygonVertex = std::pair<double, double>;
+using Polygon = std::vector<PolygonVertex>;
 struct ZoneDefinition {
   std::string id;
   std::string name;
-  ZoneWorldRect worldRect;
+  ZoneWorldRect worldRect;     // bounding box (backward compat)
+  Polygon worldPolygon;        // polygon vertices in world coords
 };
 
 // Execution context for behavior tree state tracking
@@ -77,6 +80,9 @@ private:
 
   // Zone check
   bool isRobotInZone(const std::string& zone_id);
+
+  // Point-in-polygon check using ray casting algorithm
+  static bool isPointInPolygon(double x, double y, const Polygon& polygon);
   
   // Position and distance
   void odomCallback(const nav_msgs::msg::Odometry::SharedPtr msg);

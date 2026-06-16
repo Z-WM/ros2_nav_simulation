@@ -90,10 +90,36 @@ void DecisionExecutor::loadConfiguration(const std::string& config_path)
       ZoneDefinition zone;
       zone.id = zone_yaml["id"].as<std::string>();
       zone.name = zone_yaml["name"].as<std::string>();
-      auto wr = zone_yaml["worldRect"];
-      zone.worldRect = { wr["x1"].as<double>(), wr["y1"].as<double>(), wr["x2"].as<double>(), wr["y2"].as<double>() };
+
+      // Try to load polygon worldPoints first (new format)
+      if (zone_yaml["worldPoints"] && zone_yaml["worldPoints"].size() >= 6) {
+        for (size_t i = 0; i + 1 < zone_yaml["worldPoints"].size(); i += 2) {
+          double x = zone_yaml["worldPoints"][i].as<double>();
+          double y = zone_yaml["worldPoints"][i + 1].as<double>();
+          zone.worldPolygon.push_back({x, y});
+        }
+      }
+
+      // Load worldRect for backward compat (and as bounding box)
+      if (zone_yaml["worldRect"]) {
+        auto wr = zone_yaml["worldRect"];
+        zone.worldRect = {
+          wr["x1"].as<double>(), wr["y1"].as<double>(),
+          wr["x2"].as<double>(), wr["y2"].as<double>()
+        };
+      }
+
+      // If no polygon loaded but worldRect exists, convert rect to polygon
+      if (zone.worldPolygon.empty() && zone_yaml["worldRect"]) {
+        zone.worldPolygon.push_back({zone.worldRect.x1, zone.worldRect.y1});
+        zone.worldPolygon.push_back({zone.worldRect.x2, zone.worldRect.y1});
+        zone.worldPolygon.push_back({zone.worldRect.x2, zone.worldRect.y2});
+        zone.worldPolygon.push_back({zone.worldRect.x1, zone.worldRect.y2});
+      }
+
       zones_[zone.id] = zone;
-      RCLCPP_INFO(this->get_logger(), "Loaded zone: %s (%s)", zone.name.c_str(), zone.id.c_str());
+      RCLCPP_INFO(this->get_logger(), "Loaded zone: %s (%s) with %zu vertices",
+                  zone.name.c_str(), zone.id.c_str(), zone.worldPolygon.size());
     }
   }
 
@@ -789,10 +815,19 @@ NodeStatus DecisionExecutor::tickZone(std::shared_ptr<DecisionNode> node, const 
     tickNode(param, msg); // Use tickNode to call setRemoteParameter
   }
 
+  // 如果区域没有动作、没有子节点：只判断条件和下发参数，不抢占 Selector 胜出权
+  // 返回 FAILURE 以避免打断正在执行的低优先级动作
+  // （条件判断和参数下发已在上方完成，这里只决定返回值）
   if (!zone_node->getAction() && zone_node->getChildren().empty()) {
-    RCLCPP_DEBUG(
-      this->get_logger(),
-      "Zone %s matched with params only; keeping current action",
+    if (zone_node->getParams().empty()) {
+      RCLCPP_DEBUG(this->get_logger(),
+        "Zone %s matched -- pure area gate, no action/children/params, returning FAILURE",
+        zone_node->getZoneName().c_str());
+      return NodeStatus::FAILURE;
+    }
+    // 有参数但没有动作/子节点：参数已在上方应用完毕，返回 FAILURE 不打断正在执行的动作
+    RCLCPP_DEBUG(this->get_logger(),
+      "Zone %s matched with params only; params applied, returning FAILURE to avoid preempting running actions",
       zone_node->getZoneName().c_str());
     return NodeStatus::FAILURE;
   }
@@ -827,12 +862,31 @@ bool DecisionExecutor::isRobotInZone(const std::string& zone_id)
   double x = current_odom_->pose.pose.position.x;
   double y = current_odom_->pose.pose.position.y;
 
-  double x_min = std::min(zone.worldRect.x1, zone.worldRect.x2);
-  double x_max = std::max(zone.worldRect.x1, zone.worldRect.x2);
-  double y_min = std::min(zone.worldRect.y1, zone.worldRect.y2);
-  double y_max = std::max(zone.worldRect.y1, zone.worldRect.y2);
+  return isPointInPolygon(x, y, zone.worldPolygon);
+}
 
-  return (x >= x_min && x <= x_max && y >= y_min && y <= y_max);
+bool DecisionExecutor::isPointInPolygon(double x, double y, const Polygon& polygon)
+{
+  if (polygon.size() < 3) return false;
+
+  bool inside = false;
+  size_t n = polygon.size();
+
+  for (size_t i = 0, j = n - 1; i < n; j = i++) {
+    double xi = polygon[i].first;
+    double yi = polygon[i].second;
+    double xj = polygon[j].first;
+    double yj = polygon[j].second;
+
+    // Ray casting algorithm: check if edge crosses the horizontal ray from (x,y) to the right
+    bool intersect = ((yi > y) != (yj > y)) &&
+                     (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+    if (intersect) {
+      inside = !inside;
+    }
+  }
+
+  return inside;
 }
 
 

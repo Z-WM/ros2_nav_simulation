@@ -33,7 +33,7 @@ interface CustomField {
     type: string;
 }
 
-// Default fields from Referee.msg
+// Default fields from Referee.msg (sorted alphabetically)
 const DEFAULT_FIELDS: CustomField[] = Object.entries(REFEREE_FIELD_TYPES).map(
     ([name, type]) => ({ name, type })
 );
@@ -50,7 +50,20 @@ export const CanvasDecisionTree = React.forwardRef<any, CanvasDecisionTreeProps>
     const [customFields, setCustomFields] = React.useState<CustomField[]>(() => {
         const saved = localStorage.getItem(STORAGE_KEY_FIELDS);
         if (saved) {
-            try { return JSON.parse(saved); } catch (_) { }
+            try {
+                const cached: CustomField[] = JSON.parse(saved);
+                // Merge: add any new fields from DEFAULT_FIELDS that aren't in cache
+                const cachedNames = new Set(cached.map(f => f.name));
+                const merged = [...cached];
+                for (const df of DEFAULT_FIELDS) {
+                    if (!cachedNames.has(df.name)) {
+                        merged.push(df);
+                    }
+                }
+                // Sort alphabetically
+                merged.sort((a, b) => a.name.localeCompare(b.name));
+                return merged;
+            } catch (_) { }
         }
         return DEFAULT_FIELDS;
     });
@@ -924,9 +937,16 @@ export const CanvasDecisionTree = React.forwardRef<any, CanvasDecisionTreeProps>
                                     <span style={{ fontSize: '1.2rem' }}>🗺️</span>
                                     <div>
                                         <strong>{zd.zone_name}</strong>
-                                        {zones.find((z: ZoneRule) => z.id === zd.zone_id)?.worldRect && (() => {
-                                            const wr = zones.find((z: ZoneRule) => z.id === zd.zone_id)!.worldRect;
-                                            return <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px' }}>世界坐标: ({wr.x1.toFixed(2)}, {wr.y1.toFixed(2)}) ➜ ({wr.x2.toFixed(2)}, {wr.y2.toFixed(2)})</div>;
+                                        {(() => {
+                                            const z = zones.find((z: ZoneRule) => z.id === zd.zone_id);
+                                            if (!z) return null;
+                                            if (z.points && z.points.length >= 6) {
+                                                return <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px' }}>{z.points.length / 2}顶点多边形 · 范围 ({z.worldRect.x1.toFixed(2)}, {z.worldRect.y1.toFixed(2)}) ➜ ({z.worldRect.x2.toFixed(2)}, {z.worldRect.y2.toFixed(2)})</div>;
+                                            }
+                                            if (z.worldRect) {
+                                                return <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px' }}>矩形 · 世界坐标: ({z.worldRect.x1.toFixed(2)}, {z.worldRect.y1.toFixed(2)}) ➜ ({z.worldRect.x2.toFixed(2)}, {z.worldRect.y2.toFixed(2)})</div>;
+                                            }
+                                            return null;
                                         })()}
                                     </div>
                                 </div>
