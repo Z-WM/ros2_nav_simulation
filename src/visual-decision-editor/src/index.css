@@ -358,6 +358,10 @@ section h2 {
   margin-top: 0.5rem;
 }
 
+.variable-btn {
+  background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+}
+
 /* React Flow overrides */
 .react-flow__node {
   font-size: 12px;
@@ -1012,22 +1016,19 @@ section h2 {
     border: none;
     font-size: 0.9rem;
     cursor: pointer;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") no-repeat right 1rem center / 1.1rem,
+                linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
     color: white;
     font-weight: 700;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     outline: none;
     appearance: none;
-    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-    background-repeat: no-repeat;
-    background-position: right 1rem center;
-    background-size: 1.1rem;
-    box-shadow: 0 4px 6px rgba(102, 126, 234, 0.25);
+    box-shadow: 0 4px 6px rgba(245, 158, 11, 0.3);
 }
 
 .zone-node-picker:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 12px rgba(102, 126, 234, 0.35);
+    box-shadow: 0 6px 12px rgba(245, 158, 11, 0.45);
 }
 
 .zone-node-picker:active {
@@ -1035,7 +1036,7 @@ section h2 {
 }
 
 .zone-node-picker:focus {
-    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.35);
 }
 
 /* Connection Items */
@@ -1236,5 +1237,252 @@ section h2 {
     outline: none;
     border-color: #667eea;
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.12);
+}
+
+/* ============================================================
+   Modern Action Sequence Card (multi-action group editor)
+   ============================================================ */
+.action-sequence-card {
+    background: #ffffff;
+    border: 1.5px solid #eef0f2;
+    border-radius: 14px;
+    margin-bottom: 0.85rem;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+    transition: all 0.25s ease;
+}
+
+.action-sequence-card:hover {
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+    border-color: #f0d4dd;
+}
+
+/* Header bar */
+.action-sequence-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.6rem 0.85rem;
+    background: linear-gradient(135deg, rgba(240, 147, 251, 0.10) 0%, rgba(245, 87, 108, 0.10) 100%);
+    border-bottom: 1px solid rgba(245, 87, 108, 0.15);
+}
+
+.action-sequence-card-title {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 700;
+    font-size: 0.82rem;
+    letter-spacing: 0.01em;
+    color: #be123c;
+}
+
+.action-sequence-icon {
+    font-size: 0.95rem;
+}
+
+.action-sequence-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.15rem;
+    height: 1.15rem;
+    padding: 0 0.3rem;
+    margin-left: 0.15rem;
+    border-radius: 999px;
+    background: #f5576c;
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.action-sequence-loop-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    box-shadow: 0 2px 6px rgba(99, 102, 241, 0.35);
+}
+
+/* Sequence list */
+.action-sequence-list {
+    padding: 0.65rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    max-height: 180px;
+    overflow-y: auto;
+}
+
+.action-sequence-list::-webkit-scrollbar {
+    width: 6px;
+}
+.action-sequence-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+.action-sequence-list::-webkit-scrollbar-thumb {
+    background: #e2e8f0;
+    border-radius: 999px;
+}
+.action-sequence-list::-webkit-scrollbar-thumb:hover {
+    background: #cbd5e1;
+}
+
+/* Row */
+.action-sequence-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.5rem;
+    border-radius: 9px;
+    background: #fafbfc;
+    border: 1px solid #f1f5f9;
+    transition: all 0.18s ease;
+}
+
+.action-sequence-row:hover {
+    background: #fff;
+    border-color: #f0d4dd;
+    box-shadow: 0 2px 6px rgba(245, 87, 108, 0.10);
+    transform: translateY(-1px);
+}
+
+.action-sequence-index {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.4rem;
+    height: 1.4rem;
+    border-radius: 7px;
+    background: linear-gradient(135deg, #f5576c 0%, #fb7185 100%);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.action-sequence-select {
+    flex: 1;
+    border: 1.5px solid #e8ecf1;
+    border-radius: 8px;
+    padding: 0.4rem 1.75rem 0.4rem 0.5rem;
+    font-size: 0.82rem;
+    background: #fff;
+    color: #1e293b;
+    box-sizing: border-box;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.4rem center;
+    background-size: 0.85rem;
+}
+
+.action-sequence-select:hover {
+    border-color: #f0a3b3;
+    background-color: #fef7f9;
+}
+
+.action-sequence-select:focus {
+    outline: none;
+    border-color: #f5576c;
+    box-shadow: 0 0 0 3px rgba(245, 87, 108, 0.15);
+}
+
+/* Add button */
+.action-sequence-add {
+    width: calc(100% - 1.3rem);
+    margin: 0 0.65rem 0.55rem;
+    padding: 0.45rem 0.5rem !important;
+    border-radius: 9px !important;
+    font-size: 0.78rem !important;
+}
+
+/* ============================================================
+   Loop Toggle Switch
+   ============================================================ */
+.loop-toggle-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0 0.65rem 0.65rem;
+    padding: 0.55rem 0.7rem;
+    border-radius: 10px;
+    background: #f8fafc;
+    border: 1px solid #eef2f7;
+    cursor: pointer;
+    transition: all 0.22s ease;
+    box-sizing: border-box;
+}
+
+.loop-toggle-row:hover {
+    background: #f1f5f9;
+    border-color: #e2e8f0;
+}
+
+.loop-toggle-row.is-active {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(139, 92, 246, 0.08) 100%);
+    border-color: rgba(99, 102, 241, 0.30);
+}
+
+.loop-toggle-checkbox {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+
+.loop-toggle-switch {
+    position: relative;
+    flex-shrink: 0;
+    width: 2.4rem;
+    height: 1.3rem;
+    border-radius: 999px;
+    background: #cbd5e1;
+    transition: background 0.25s ease;
+}
+
+.loop-toggle-row.is-active .loop-toggle-switch {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+}
+
+.loop-toggle-thumb {
+    position: absolute;
+    top: 0.15rem;
+    left: 0.15rem;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.loop-toggle-row.is-active .loop-toggle-thumb {
+    transform: translateX(1.1rem);
+}
+
+.loop-toggle-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #475569;
+    user-select: none;
+    transition: color 0.22s ease;
+}
+
+.loop-toggle-row.is-active .loop-toggle-label {
+    color: #4f46e5;
 }
 

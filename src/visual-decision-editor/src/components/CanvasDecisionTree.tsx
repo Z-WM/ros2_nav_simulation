@@ -532,7 +532,7 @@ export const CanvasDecisionTree = React.forwardRef<any, CanvasDecisionTreeProps>
 
                 <hr style={{ margin: '0.5rem 0', border: 'none', borderTop: '1px solid #ddd' }} />
 
-                <button onClick={() => setShowFieldManager(!showFieldManager)} className="toolbar-btn">
+                <button onClick={() => setShowFieldManager(!showFieldManager)} className="toolbar-btn variable-btn">
                     📋 变量管理 {showFieldManager ? '▲' : '▼'}
                 </button>
 
@@ -740,12 +740,21 @@ export const CanvasDecisionTree = React.forwardRef<any, CanvasDecisionTreeProps>
                                 </div>
                             ) : (
                                 // Multi-step Mode
-                                <div className="multi-action-editor" style={{ border: '2px solid #e8ecf1', padding: '12px', borderRadius: '10px', marginBottom: '10px', background: '#fafbfc' }}>
-                                    <label style={{ fontWeight: 600, fontSize: '0.85rem', display: 'block', marginBottom: '0.5rem', color: '#334155' }}>动作序列:</label>
-                                    <div style={{ maxHeight: '150px', overflowY: 'auto', marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <div className="action-sequence-card">
+                                    <div className="action-sequence-card-header">
+                                        <span className="action-sequence-card-title">
+                                            <span className="action-sequence-icon">🎬</span>
+                                            动作序列
+                                            <span className="action-sequence-count">{selectedNode.data.actions.length}</span>
+                                        </span>
+                                        {selectedNode.data.loop && (
+                                            <span className="action-sequence-loop-badge">🔄 循环中</span>
+                                        )}
+                                    </div>
+                                    <div className="action-sequence-list">
                                         {selectedNode.data.actions.map((act: string, idx: number) => (
-                                            <div key={idx} style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                                <span style={{ width: '20px', lineHeight: '1', fontSize: '0.85rem', fontWeight: 600, color: '#64748b', flexShrink: 0, textAlign: 'right' }}>{idx + 1}.</span>
+                                            <div key={idx} className="action-sequence-row">
+                                                <span className="action-sequence-index">{idx + 1}</span>
                                                 <select
                                                     value={act}
                                                     onChange={(e) => {
@@ -755,7 +764,7 @@ export const CanvasDecisionTree = React.forwardRef<any, CanvasDecisionTreeProps>
                                                         if (idx === 0) update.action = e.target.value;
                                                         updateNodeData(selectedNode.id, { ...selectedNode.data, ...update });
                                                     }}
-                                                    style={{ flex: 1 }}
+                                                    className="action-sequence-select"
                                                 >
                                                     {renderActionOptions(false)}
                                                 </select>
@@ -778,22 +787,23 @@ export const CanvasDecisionTree = React.forwardRef<any, CanvasDecisionTreeProps>
                                             const newActions = [...selectedNode.data.actions, defaultAction()];
                                             updateNodeData(selectedNode.id, { ...selectedNode.data, actions: newActions });
                                         }}
-                                        className="add-sub-btn add-sub-action"
-                                        style={{ width: '100%' }}
+                                        className="add-sub-btn add-sub-action action-sequence-add"
                                     >
                                         + 添加动作
                                     </button>
 
-                                    <div className="input-group" style={{ marginTop: '10px' }}>
-                                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                            <input
-                                                type="checkbox"
-                                                checked={!!selectedNode.data.loop}
-                                                onChange={(e) => updateNodeData(selectedNode.id, { ...selectedNode.data, loop: e.target.checked })}
-                                            />
-                                            🔄 组内循环执行
-                                        </label>
-                                    </div>
+                                    <label className={`loop-toggle-row${selectedNode.data.loop ? ' is-active' : ''}`}>
+                                        <input
+                                            type="checkbox"
+                                            className="loop-toggle-checkbox"
+                                            checked={!!selectedNode.data.loop}
+                                            onChange={(e) => updateNodeData(selectedNode.id, { ...selectedNode.data, loop: e.target.checked })}
+                                        />
+                                        <span className="loop-toggle-switch">
+                                            <span className="loop-toggle-thumb" />
+                                        </span>
+                                        <span className="loop-toggle-label">🔄 组内循环执行</span>
+                                    </label>
                                 </div>
                             )}
 

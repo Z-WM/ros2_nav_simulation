@@ -12,60 +12,32 @@ map_metadata:
 waypoints:
   - name: 补给点
     pixel:
-      - 233.1192660550459
-      - 1291.6710353866317
+      - 236.12921468259216
+      - 1260.3210149445329
     world:
-      - -1.569
-      - -5.967
+      - -1.539
+      - -5.653
   - name: 守护堡垒点
     pixel:
-      - 389.25294888597637
-      - 807.9947575360419
+      - 386.5832275776951
+      - 805.3767378569596
     world:
-      - -0.007
-      - -1.13
+      - -0.034
+      - -1.104
   - name: 前哨攻击点
     pixel:
-      - 1167.758846657929
-      - 208.38794233289644
+      - 1152.9866636805343
+      - 224.25429045364137
     world:
-      - 7.778
-      - 4.866
-  - name: 打符点
-    pixel:
-      - 1043.905635648755
-      - 401.04849279161203
-    world:
-      - 6.539
-      - 2.94
-  - name: 高地点
-    pixel:
-      - 1693.6936936936936
-      - 876.1261261261261
-    world:
-      - 13.037
-      - -1.811
-  - name: 途径点1
-    pixel:
-      - 453.9113428943938
-      - 1385.3976531942635
-    world:
-      - 0.639
-      - -6.904
-  - name: 途径点2
-    pixel:
-      - 1049.8044328552805
-      - 1391.8513689700133
-    world:
-      - 6.598
-      - -6.969
+      - 7.63
+      - 4.707
   - name: 高地守护堡垒点
     pixel:
-      - 1092.362344582593
-      - 751.3321492007104
+      - 1098.3884094115397
+      - 746.1493680249139
     world:
-      - 7.024
-      - -0.563
+      - 7.084
+      - -0.511
 zones:
   - id: zone-1781438282320
     name: 起伏路段加速区
@@ -93,8 +65,8 @@ zones:
         param_value: '0.0'
         param_type: double
     priority: 1
-    canvasX: -190.69239000000073
-    canvasY: 180.33694000000003
+    canvasX: 120
+    canvasY: 190
     worldPoints:
       - 0.004
       - -5.947
@@ -187,9 +159,77 @@ zones:
       loop: false
       duration: 0
     params: []
-    priority: 2
-    canvasX: 120
+    priority: 1
+    canvasX: 360
     canvasY: 190
+  - id: zone-1781601059328
+    name: 己方半场
+    rect:
+      x1: 0
+      y1: 1.7730905861456487
+      x2: 1253.5750444049736
+      y2: 1487.6230017761993
+    worldRect:
+      x1: -3.9
+      y1: -7.926
+      x2: 8.636
+      y2: 6.932
+    points:
+      - 1.7730905861456487
+      - 8.865452930728244
+      - 0
+      - 1487.6230017761993
+      - 343.97957371225584
+      - 1476.9844582593253
+      - 349.2988454706928
+      - 1276.625222024867
+      - 959.2420071047959
+      - 1285.4906749555953
+      - 1040.8041740674958
+      - 1172.0128774422737
+      - 1039.0310834813502
+      - 1102.8623445825936
+      - 914.9147424511547
+      - 804.9831261101245
+      - 916.6878330373004
+      - 661.362788632327
+      - 1253.5750444049736
+      - 182.6283303730018
+      - 1246.482682060391
+      - 1.7730905861456487
+    worldPoints:
+      - -3.882
+      - 6.861
+      - -3.9
+      - -7.926
+      - -0.46
+      - -7.82
+      - -0.407
+      - -5.816
+      - 5.692
+      - -5.905
+      - 6.508
+      - -4.77
+      - 6.49
+      - -4.079
+      - 5.249
+      - -1.1
+      - 5.267
+      - 0.336
+      - 8.636
+      - 5.124
+      - 8.565
+      - 6.932
+    conditions: []
+    action:
+      type: Action
+      action: 补给点
+      loop: false
+      duration: 0
+    params: []
+    priority: 1
+    canvasX: 600
+    canvasY: 450
 decision_tree:
   root:
     type: Selector
@@ -219,7 +259,7 @@ decision_tree:
                 param_value: '0.0'
                 param_type: double
       - type: Sequence
-        priority: 2
+        priority: 1
         children:
           - type: Condition
             field: game_progress
@@ -259,8 +299,16 @@ decision_tree:
             value_type: float32
             operator: '!='
             threshold: 0
-          - type: Action
-            action: 补给点
+          - type: Zone
+            zone_id: zone-1781601059328
+            zone_name: 己方半场
+            action:
+              type: Action
+              action: 补给点
+              loop: false
+              duration: 0
+            conditions: []
+            params: []
           - type: Action
             action: STOP
             duration: 2
@@ -269,6 +317,26 @@ decision_tree:
               value_type: uint16
               operator: '>='
               threshold: 400
+          - type: Action
+            action: REFEREE_TARGET
+      - type: Sequence
+        priority: 3
+        children:
+          - type: Condition
+            field: game_progress
+            value_type: uint16
+            operator: '=='
+            threshold: 4
+          - type: Condition
+            field: target_position_x
+            value_type: float32
+            operator: '!='
+            threshold: 0
+          - type: Condition
+            field: target_position_y
+            value_type: float32
+            operator: '!='
+            threshold: 0
           - type: Action
             action: REFEREE_TARGET
             actions:
