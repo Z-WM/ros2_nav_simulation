@@ -6,6 +6,7 @@
 #include <gazebo/sensors/RaySensor.hh>
 #include <gazebo/transport/Node.hh>
 #include <gazebo_ros/node.hpp>
+#include <gazebo_ros/conversions/generic.hpp>
 #include <livox_ros_driver2/msg/custom_msg.hpp>
 #include <livox_ros_driver2/msg/custom_point.hpp>
 #include <rclcpp/logging.hpp>
@@ -143,14 +144,18 @@ namespace gazebo
 
         // 创建自定义消息 pp_livox，用于发布 Livox CustomMsg 类型消息
         livox_ros_driver2::msg::CustomMsg pp_livox;
-        pp_livox.header.stamp = node_->get_clock()->now();
+        // Use Gazebo physics sim time instead of node_->get_clock()->now() to avoid
+        // zero timestamp race condition when /clock topic hasn't been received yet.
+        pp_livox.header.stamp = gazebo_ros::Convert<rclcpp::Time>(world->SimTime());
         pp_livox.header.frame_id = raySensor->Name();
+        // Set timebase to the scan start time in nanoseconds (as the real Livox driver does)
+        auto sim_time = world->SimTime();
+        pp_livox.timebase = static_cast<uint64_t>(sim_time.sec) * 1000000000ULL + static_cast<uint64_t>(sim_time.nsec);
         int count = 0;
-        boost::chrono::high_resolution_clock::time_point start_time = boost::chrono::high_resolution_clock::now();
 
         // 用于 PointCloud2 类型消息发布
         sensor_msgs::msg::PointCloud2 cloud2;
-        cloud2.header.stamp = node_->get_clock()->now();
+        cloud2.header.stamp = gazebo_ros::Convert<rclcpp::Time>(world->SimTime());
         cloud2.header.frame_id = raySensor->Name();
 
         sensor_msgs::PointCloud2Modifier modifier(cloud2);
@@ -194,10 +199,14 @@ namespace gazebo
             ++out_y;
             ++out_z;
 
-            // 计算时间戳偏移
-            boost::chrono::high_resolution_clock::time_point end_time = boost::chrono::high_resolution_clock::now();
-            boost::chrono::nanoseconds elapsed_time = boost::chrono::duration_cast<boost::chrono::nanoseconds>(end_time - start_time);
-            p.offset_time = elapsed_time.count();
+            // Calculate offset_time based on point position within the scan.
+            // Mid360 scan period ~100ms. Map rotate_info.time (1-based sequential index
+            // within the full 800000-point scan pattern) to nanoseconds offset.
+            // This gives realistic intra-scan timing for motion undistortion.
+            // scan_period_ns = 100ms = 100,000,000 ns, maxPointSize = total points per scan
+            const uint64_t scan_period_ns = 100000000ULL;
+            p.offset_time = static_cast<uint32_t>(
+                static_cast<double>(rotate_info.time) / static_cast<double>(maxPointSize) * scan_period_ns);
 
             // 将点云数据添加到 CustomMsg 消息中
             pp_livox.points.push_back(p);
