@@ -17,6 +17,9 @@ interface CanvasDecisionTreeProps {
     zones?: ZoneRule[];
     onZonesChange?: (zones: ZoneRule[]) => void;
     onNodesChange?: (nodes: DecisionTreeNode[]) => void;
+    // Execution highlight (optional, from the web decision engine).
+    runningNodeIds?: Set<string>;
+    currentPathIds?: string[];
 }
 
 // 可用的 ROS 变量类型
@@ -38,7 +41,7 @@ const DEFAULT_FIELDS: CustomField[] = Object.entries(REFEREE_FIELD_TYPES).map(
     ([name, type]) => ({ name, type })
 );
 
-export const CanvasDecisionTree = React.forwardRef<any, CanvasDecisionTreeProps>(({ waypoints, zones = [], onNodesChange }, ref) => {
+export const CanvasDecisionTree = React.forwardRef<any, CanvasDecisionTreeProps>(({ waypoints, zones = [], onNodesChange, runningNodeIds, currentPathIds }, ref) => {
 
     const [nodes, setNodes] = React.useState<DecisionTreeNode[]>(() => {
         const saved = localStorage.getItem(STORAGE_KEY_NODES);
@@ -252,6 +255,8 @@ export const CanvasDecisionTree = React.forwardRef<any, CanvasDecisionTreeProps>
     const renderNode = (node: DecisionTreeNode) => {
         const isSelected = selectedNodeId === node.id;
         const isSource = sourceNodeId === node.id;
+        const isRunning = runningNodeIds?.has(node.id) ?? false;
+        const onPath = currentPathIds?.includes(node.id) ?? false;
 
         let fillColor = '#fff';
         let strokeColor = '#667eea';
@@ -292,6 +297,14 @@ export const CanvasDecisionTree = React.forwardRef<any, CanvasDecisionTreeProps>
             label = `🔧 参数\n${node.data.param_name}: ${node.data.param_value}`;
         }
 
+        // Execution highlight overrides fill/stroke. Priority: selected > running > path.
+        if (isRunning) {
+            fillColor = '#ffb74d'; // RUNNING: bold orange
+            strokeColor = '#e65100';
+        } else if (onPath) {
+            fillColor = '#ffe082'; // on active path: amber
+        }
+
         return (
             <Group
                 key={node.id}
@@ -325,10 +338,10 @@ export const CanvasDecisionTree = React.forwardRef<any, CanvasDecisionTreeProps>
                     height={nodeH}
                     fill={fillColor}
                     stroke={isSource ? '#ff0000' : strokeColor}
-                    strokeWidth={isSelected ? 4 : isSource ? 3 : 2}
+                    strokeWidth={isSelected ? 4 : isSource ? 3 : isRunning ? 4 : 2}
                     cornerRadius={node.type === 'zone' ? 14 : 10}
-                    shadowBlur={isSelected ? 12 : 6}
-                    shadowColor="rgba(0,0,0,0.3)"
+                    shadowBlur={isSelected ? 12 : isRunning ? 14 : 6}
+                    shadowColor={isRunning ? 'rgba(230,81,0,0.6)' : 'rgba(0,0,0,0.3)'}
                     perfectDrawEnabled={false}
                 />
                 {/* Zone: colored top bar */}

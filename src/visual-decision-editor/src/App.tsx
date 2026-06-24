@@ -1,6 +1,9 @@
 import React from 'react';
 import { MapEditor } from './components/MapEditor';
 import { CanvasDecisionTree } from './components/CanvasDecisionTree';
+import { RunPanel } from './components/RunPanel';
+import { RosProvider } from './ros/RosContext';
+import { useDecisionEngine } from './engine/useDecisionEngine';
 import { MapMetadata, Waypoint, ZoneRule } from './types';
 import { exportToYaml, downloadYaml } from './utils/YamlExporter';
 import { importFromYaml } from './utils/YamlImporter';
@@ -9,6 +12,14 @@ import './index.css';
 const STORAGE_KEY_ZONES = 'mapEditor_zones';
 
 function App() {
+    return (
+        <RosProvider>
+            <Editor />
+        </RosProvider>
+    );
+}
+
+function Editor() {
     const [mapMetadata, setMapMetadata] = React.useState<MapMetadata>({
         imagePath: '',
         resolution: 0.05,
@@ -18,11 +29,16 @@ function App() {
     });
     const [waypoints, setWaypoints] = React.useState<Waypoint[]>([]);
     const [zones, setZones] = React.useState<ZoneRule[]>([]);
+    const [canvasNodes, setCanvasNodes] = React.useState<any[]>([]);
     const [showMapModal, setShowMapModal] = React.useState(false);
     const [lastChangeTime, setLastChangeTime] = React.useState(0);
     const [saveStatus, setSaveStatus] = React.useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
     const decisionTreeRef = React.useRef<any>(null);
     const yamlInputRef = React.useRef<HTMLInputElement>(null);
+
+    // Web decision engine: runs the same BT logic as C++ decision_executor,
+    // fed by rosbridge (/referee, /odom), highlighting the active branch.
+    const engine = useDecisionEngine(canvasNodes, zones, waypoints);
 
     // Persist zones
     const handleZonesChange = React.useCallback((newZones: ZoneRule[]) => {
@@ -168,6 +184,13 @@ function App() {
                     </div>
                 </div>
                 <div className="header-buttons">
+                    <RunPanel
+                        running={engine.running}
+                        status={engine.status}
+                        targetWaypoint={engine.targetWaypoint}
+                        onRun={engine.start}
+                        onStop={engine.stop}
+                    />
                     <button onClick={() => setShowMapModal(true)} className="map-btn">
                         🗺️ 地图编辑
                     </button>
@@ -195,10 +218,24 @@ function App() {
                         waypoints={waypoints}
                         zones={zones}
                         onZonesChange={handleZonesChange}
-                        onNodesChange={() => setLastChangeTime(Date.now())}
+                        onNodesChange={(nodes) => {
+                            setCanvasNodes(nodes);
+                            setLastChangeTime(Date.now());
+                        }}
+                        runningNodeIds={engine.runningNodeIds}
+                        currentPathIds={engine.currentPathIds}
                     />
                 </section>
             </div>
+
+            {engine.log.length > 0 && (
+                <div className="exec-log">
+                    <div className="log-title">执行日志</div>
+                    {engine.log.slice(-30).map((line, i) => (
+                        <div key={i} className="log-line">{line}</div>
+                    ))}
+                </div>
+            )}
 
             {/* 地图编辑模态框 */}
             {showMapModal && (

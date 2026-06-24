@@ -100,10 +100,97 @@ body {
 }
 
 .map-btn:hover,
-.export-btn:hover {
+.export-btn:hover,
+.run-btn:hover,
+.connect-btn:hover,
+.stop-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
 }
+
+/* Run panel: rosbridge connect + decision execution controls */
+.run-panel {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.connect-btn,
+.run-btn,
+.stop-btn {
+  border: none;
+  color: white;
+  padding: 0.75rem 1.25rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+}
+
+.connect-btn {
+  background: linear-gradient(135deg, #5b6470 0%, #3a4150 100%);
+}
+.connect-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.run-btn {
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+}
+.run-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.stop-btn {
+  background: linear-gradient(135deg, #ff5858 0%, #f857a6 100%);
+}
+
+.target-badge,
+.status-badge,
+.ros-error {
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 0.35rem 0.6rem;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-running { background: rgba(56, 239, 125, 0.25); color: #c6ffe0; }
+.status-success { background: rgba(56, 239, 125, 0.25); color: #c6ffe0; }
+.status-failure { background: rgba(255, 88, 88, 0.25); color: #ffd0d0; }
+.ros-error { background: rgba(255, 88, 88, 0.25); color: #ffd0d0; }
+
+/* Execution log */
+.exec-log {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  width: 360px;
+  max-height: 180px;
+  overflow-y: auto;
+  background: rgba(20, 24, 34, 0.92);
+  color: #cfd8e3;
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  z-index: 50;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+.exec-log .log-line { white-space: pre-wrap; word-break: break-all; }
+.exec-log .log-title { color: #8fa6c0; font-weight: 600; margin-bottom: 0.25rem; }
 
 .app-content-full {
   flex: 1;
