@@ -196,7 +196,7 @@
         "duration": 0
       },
       "params": [],
-      "priority": 1,
+      "priority": 2,
       "canvasX": 360,
       "canvasY": 190
     },
@@ -272,8 +272,8 @@
       },
       "params": [],
       "priority": 1,
-      "canvasX": 523.7543999999998,
-      "canvasY": 438.2872
+      "canvasX": 600,
+      "canvasY": 450
     }
   ],
   "decisionNodes": [
@@ -295,8 +295,8 @@
         "node-import-3",
         "node-import-4",
         "node-import-10",
+        "node-import-12",
         "node-import-14",
-        "node-import-16",
         "node-import-18"
       ]
     },
@@ -442,108 +442,52 @@
       "y": 710,
       "data": {
         "action": "REFEREE_TARGET",
+        "loop": true,
         "duration": 0,
-        "exit_condition": null
+        "exit_condition": null,
+        "actions": [
+          "REFEREE_TARGET"
+        ]
       },
       "children": []
     },
     {
       "id": "node-import-9",
       "type": "action",
-      "x": 843.63,
-      "y": 451.2099999999999,
+      "x": 840,
+      "y": 450,
       "data": {
         "action": "REFEREE_TARGET",
+        "loop": true,
         "duration": 0,
+        "exit_condition": null,
         "actions": [
           "REFEREE_TARGET"
-        ],
-        "loop": true
+        ]
       },
       "children": []
     },
     {
       "id": "node-import-10",
       "type": "condition",
-      "x": 1200,
-      "y": 190,
-      "data": {
-        "field": "fortress_status",
-        "value_type": "uint16",
-        "operator": "==",
-        "threshold": 2,
-        "priority": 4,
-        "loop": false
-      },
-      "children": [
-        "node-import-11",
-        "node-import-13"
-      ]
-    },
-    {
-      "id": "node-import-11",
-      "type": "condition",
       "x": 1080,
-      "y": 320,
-      "data": {
-        "field": "vision_status",
-        "value_type": "uint8",
-        "operator": "==",
-        "threshold": 1,
-        "priority": 4,
-        "loop": false
-      },
-      "children": [
-        "node-import-12"
-      ]
-    },
-    {
-      "id": "node-import-12",
-      "type": "action",
-      "x": 1080,
-      "y": 450,
-      "data": {
-        "action": "STOP",
-        "loop": false,
-        "duration": 0,
-        "exit_condition": null
-      },
-      "children": []
-    },
-    {
-      "id": "node-import-13",
-      "type": "action",
-      "x": 1320,
-      "y": 320,
-      "data": {
-        "action": "守护堡垒点",
-        "loop": false,
-        "duration": 0,
-        "exit_condition": null
-      },
-      "children": []
-    },
-    {
-      "id": "node-import-14",
-      "type": "condition",
-      "x": 1560,
       "y": 190,
       "data": {
         "field": "current_hp",
         "value_type": "uint16",
         "operator": "<",
         "threshold": 150,
-        "priority": 5,
+        "priority": 4,
         "loop": false
       },
       "children": [
-        "node-import-15"
+        "node-import-11"
       ]
     },
     {
-      "id": "node-import-15",
+      "id": "node-import-11",
       "type": "action",
-      "x": 1560,
+      "x": 1080,
       "y": 320,
       "data": {
         "action": "补给点",
@@ -559,26 +503,26 @@
       "children": []
     },
     {
-      "id": "node-import-16",
+      "id": "node-import-12",
       "type": "condition",
-      "x": 1800,
+      "x": 1320,
       "y": 190,
       "data": {
         "field": "shoot_num",
         "value_type": "uint16",
         "operator": "<=",
         "threshold": 30,
-        "priority": 6,
+        "priority": 5,
         "loop": false
       },
       "children": [
-        "node-import-17"
+        "node-import-13"
       ]
     },
     {
-      "id": "node-import-17",
+      "id": "node-import-13",
       "type": "action",
-      "x": 1800,
+      "x": 1320,
       "y": 320,
       "data": {
         "action": "补给点",
@@ -590,6 +534,67 @@
           "operator": ">=",
           "threshold": 100
         }
+      },
+      "children": []
+    },
+    {
+      "id": "node-import-14",
+      "type": "condition",
+      "x": 1680,
+      "y": 190,
+      "data": {
+        "field": "fortress_status",
+        "value_type": "uint16",
+        "operator": "==",
+        "threshold": 2,
+        "priority": 6,
+        "loop": false
+      },
+      "children": [
+        "node-import-15",
+        "node-import-17"
+      ]
+    },
+    {
+      "id": "node-import-15",
+      "type": "condition",
+      "x": 1560,
+      "y": 320,
+      "data": {
+        "field": "vision_status",
+        "value_type": "uint8",
+        "operator": "==",
+        "threshold": 1,
+        "priority": 6,
+        "loop": false
+      },
+      "children": [
+        "node-import-16"
+      ]
+    },
+    {
+      "id": "node-import-16",
+      "type": "action",
+      "x": 1560,
+      "y": 450,
+      "data": {
+        "action": "STOP",
+        "loop": false,
+        "duration": 0,
+        "exit_condition": null
+      },
+      "children": []
+    },
+    {
+      "id": "node-import-17",
+      "type": "action",
+      "x": 1800,
+      "y": 320,
+      "data": {
+        "action": "守护堡垒点",
+        "loop": false,
+        "duration": 0,
+        "exit_condition": null
       },
       "children": []
     },
@@ -676,5 +681,5 @@
       "children": []
     }
   ],
-  "yamlContent": "topic:\n  name: /referee\n  type: sentry_msgs/msg/Referee\nmap_metadata:\n  image_path: RMUC2026赛场渲染图.png\n  resolution: 0.01\n  width_pixels: 2800\n  height_pixels: 1500\n  origin_pixel:\n    - 390\n    - 695\nwaypoints:\n  - name: 补给点\n    pixel:\n      - 236.12921468259216\n      - 1260.3210149445329\n    world:\n      - -1.539\n      - -5.653\n  - name: 守护堡垒点\n    pixel:\n      - 386.5832275776951\n      - 805.3767378569596\n    world:\n      - -0.034\n      - -1.104\n  - name: 前哨攻击点\n    pixel:\n      - 1152.9866636805343\n      - 224.25429045364137\n    world:\n      - 7.63\n      - 4.707\n  - name: 高地守护堡垒点\n    pixel:\n      - 1098.3884094115397\n      - 746.1493680249139\n    world:\n      - 7.084\n      - -0.511\nzones:\n  - id: zone-1781438282320\n    name: 起伏路段加速区\n    rect:\n      x1: 390.4498044328554\n      y1: 1289.667535853977\n      x2: 1254.1720990873537\n      y2: 1490.808344198175\n    worldRect:\n      x1: 0.004\n      y1: -5.947\n      x2: 8.642\n      y2: -7.958\n    conditions: []\n    action: null\n    params:\n      - type: Param\n        node_name: controller_server\n        param_name: FollowPath.rotation_kp\n        param_value: '5.0'\n        param_type: double\n      - type: Param\n        node_name: serial_interfaces\n        param_name: vel_spin\n        param_value: '0.0'\n        param_type: double\n    priority: 1\n    canvasX: 120\n    canvasY: 190\n    worldPoints:\n      - 0.004\n      - -5.947\n      - 8.642\n      - -5.947\n      - 8.642\n      - -7.958\n      - 0.004\n      - -7.958\n    points:\n      - 390.4498044328554\n      - 1289.667535853977\n      - 1254.1720990873537\n      - 1289.667535853977\n      - 1254.1720990873537\n      - 1490.808344198175\n      - 390.4498044328554\n      - 1490.808344198175\n  - id: zone-1781579328379\n    name: 高地区\n    rect:\n      x1: 975.1998223801068\n      y1: 199.8756660746004\n      x2: 1824.6714031971583\n      y2: 1292.7442273534637\n    worldRect:\n      x1: 5.852\n      y1: -5.977\n      x2: 14.347\n      y2: 4.951\n    points:\n      - 975.1998223801068\n      - 1284.6847246891653\n      - 1545.8126110124335\n      - 1292.7442273534637\n      - 1789.2095914742454\n      - 944.5737122557728\n      - 1785.985790408526\n      - 509.36056838365903\n      - 1740.852575488455\n      - 390.0799289520427\n      - 1744.0763765541742\n      - 322.3801065719361\n      - 1824.6714031971583\n      - 214.3827708703375\n      - 1254.0586145648315\n      - 199.8756660746004\n      - 1005.8259325044406\n      - 551.2699822380107\n      - 1005.8259325044406\n      - 978.423623445826\n      - 1052.5710479573713\n      - 1097.7042628774425\n      - 1050.9591474245117\n      - 1168.6278863232683\n    worldPoints:\n      - 5.852\n      - -5.897\n      - 11.558\n      - -5.977\n      - 13.992\n      - -2.496\n      - 13.96\n      - 1.856\n      - 13.509\n      - 3.049\n      - 13.541\n      - 3.726\n      - 14.347\n      - 4.806\n      - 8.641\n      - 4.951\n      - 6.158\n      - 1.437\n      - 6.158\n      - -2.834\n      - 6.626\n      - -4.027\n      - 6.61\n      - -4.736\n    conditions:\n      - type: Condition\n        field: fortress_status\n        value_type: uint16\n        operator: '=='\n        threshold: 2\n    action:\n      type: Action\n      action: 高地守护堡垒点\n      loop: false\n      duration: 0\n    params: []\n    priority: 1\n    canvasX: 360\n    canvasY: 190\n  - id: zone-1781601059328\n    name: 己方半场\n    rect:\n      x1: 0\n      y1: 1.7730905861456487\n      x2: 1253.5750444049736\n      y2: 1487.6230017761993\n    worldRect:\n      x1: -3.9\n      y1: -7.926\n      x2: 8.636\n      y2: 6.932\n    points:\n      - 1.7730905861456487\n      - 8.865452930728244\n      - 0\n      - 1487.6230017761993\n      - 343.97957371225584\n      - 1476.9844582593253\n      - 349.2988454706928\n      - 1276.625222024867\n      - 959.2420071047959\n      - 1285.4906749555953\n      - 1040.8041740674958\n      - 1172.0128774422737\n      - 1039.0310834813502\n      - 1102.8623445825936\n      - 914.9147424511547\n      - 804.9831261101245\n      - 916.6878330373004\n      - 661.362788632327\n      - 1253.5750444049736\n      - 182.6283303730018\n      - 1246.482682060391\n      - 1.7730905861456487\n    worldPoints:\n      - -3.882\n      - 6.861\n      - -3.9\n      - -7.926\n      - -0.46\n      - -7.82\n      - -0.407\n      - -5.816\n      - 5.692\n      - -5.905\n      - 6.508\n      - -4.77\n      - 6.49\n      - -4.079\n      - 5.249\n      - -1.1\n      - 5.267\n      - 0.336\n      - 8.636\n      - 5.124\n      - 8.565\n      - 6.932\n    conditions: []\n    action:\n      type: Action\n      action: 补给点\n      loop: false\n      duration: 0\n    params: []\n    priority: 1\n    canvasX: 600\n    canvasY: 450\ndecision_tree:\n  root:\n    type: Selector\n    children:\n      - type: Sequence\n        priority: 1\n        children:\n          - type: Condition\n            field: game_progress\n            value_type: uint16\n            operator: '=='\n            threshold: 4\n          - type: Zone\n            zone_id: zone-1781438282320\n            zone_name: 起伏路段加速区\n            action: null\n            conditions: []\n            params:\n              - type: Param\n                node_name: controller_server\n                param_name: FollowPath.rotation_kp\n                param_value: '5.0'\n                param_type: double\n              - type: Param\n                node_name: serial_interfaces\n                param_name: vel_spin\n                param_value: '0.0'\n                param_type: double\n      - type: Sequence\n        priority: 1\n        children:\n          - type: Condition\n            field: game_progress\n            value_type: uint16\n            operator: '=='\n            threshold: 4\n          - type: Zone\n            zone_id: zone-1781579328379\n            zone_name: 高地区\n            action:\n              type: Action\n              action: 高地守护堡垒点\n              loop: false\n              duration: 0\n            conditions:\n              - type: Condition\n                field: fortress_status\n                value_type: uint16\n                operator: '=='\n                threshold: 2\n            params: []\n      - type: Sequence\n        priority: 3\n        children:\n          - type: Condition\n            field: game_progress\n            value_type: uint16\n            operator: '=='\n            threshold: 4\n          - type: Condition\n            field: target_position_x\n            value_type: float32\n            operator: '!='\n            threshold: 0\n          - type: Condition\n            field: target_position_y\n            value_type: float32\n            operator: '!='\n            threshold: 0\n          - type: Zone\n            zone_id: zone-1781601059328\n            zone_name: 己方半场\n            action:\n              type: Action\n              action: 补给点\n              loop: false\n              duration: 0\n            conditions: []\n            params: []\n          - type: Action\n            action: STOP\n            duration: 2\n            exit_condition:\n              field: current_hp\n              value_type: uint16\n              operator: '>='\n              threshold: 400\n          - type: Action\n            action: REFEREE_TARGET\n      - type: Sequence\n        priority: 3\n        children:\n          - type: Condition\n            field: game_progress\n            value_type: uint16\n            operator: '=='\n            threshold: 4\n          - type: Condition\n            field: target_position_x\n            value_type: float32\n            operator: '!='\n            threshold: 0\n          - type: Condition\n            field: target_position_y\n            value_type: float32\n            operator: '!='\n            threshold: 0\n          - type: Action\n            action: REFEREE_TARGET\n            actions:\n              - REFEREE_TARGET\n            loop: true\n      - type: Sequence\n        priority: 4\n        children:\n          - type: Condition\n            field: game_progress\n            value_type: uint16\n            operator: '=='\n            threshold: 4\n          - type: Condition\n            field: fortress_status\n            value_type: uint16\n            operator: '=='\n            threshold: 2\n          - type: Condition\n            field: vision_status\n            value_type: uint8\n            operator: '=='\n            threshold: 1\n          - type: Action\n            action: STOP\n      - type: Sequence\n        priority: 4\n        children:\n          - type: Condition\n            field: game_progress\n            value_type: uint16\n            operator: '=='\n            threshold: 4\n          - type: Condition\n            field: fortress_status\n            value_type: uint16\n            operator: '=='\n            threshold: 2\n          - type: Action\n            action: 守护堡垒点\n      - type: Sequence\n        priority: 5\n        children:\n          - type: Condition\n            field: game_progress\n            value_type: uint16\n            operator: '=='\n            threshold: 4\n          - type: Condition\n            field: current_hp\n            value_type: uint16\n            operator: <\n            threshold: 150\n          - type: Action\n            action: 补给点\n            exit_condition:\n              field: current_hp\n              value_type: uint16\n              operator: '>='\n              threshold: 400\n      - type: Sequence\n        priority: 6\n        children:\n          - type: Condition\n            field: game_progress\n            value_type: uint16\n            operator: '=='\n            threshold: 4\n          - type: Condition\n            field: shoot_num\n            value_type: uint16\n            operator: <=\n            threshold: 30\n          - type: Action\n            action: 补给点\n            exit_condition:\n              field: shoot_num\n              value_type: uint16\n              operator: '>='\n              threshold: 100\n      - type: Sequence\n        priority: 7\n        children:\n          - type: Condition\n            field: game_progress\n            value_type: uint16\n            operator: '=='\n            threshold: 4\n          - type: Condition\n            field: fortress_status\n            value_type: uint16\n            operator: '!='\n            threshold: 2\n          - type: Action\n            action: 前哨攻击点\n          - type: Condition\n            field: vision_status\n            value_type: uint8\n            operator: '=='\n            threshold: 1\n          - type: Action\n            action: 前哨攻击点\n            actions:\n              - 前哨攻击点\n            loop: true\n      - type: Sequence\n        priority: 7\n        children:\n          - type: Condition\n            field: game_progress\n            value_type: uint16\n            operator: '=='\n            threshold: 4\n          - type: Condition\n            field: fortress_status\n            value_type: uint16\n            operator: '!='\n            threshold: 2\n          - type: Action\n            action: 前哨攻击点\n          - type: Action\n            action: 前哨攻击点\n            actions:\n              - 前哨攻击点\n            loop: true\n"
+  "yamlContent": "topic:\n  name: /referee\n  type: sentry_msgs/msg/Referee\nmap_metadata:\n  image_path: RMUC2026赛场渲染图.png\n  resolution: 0.01\n  width_pixels: 2800\n  height_pixels: 1500\n  origin_pixel:\n    - 390\n    - 695\nwaypoints:\n  - name: 补给点\n    pixel:\n      - 236.12921468259216\n      - 1260.3210149445329\n    world:\n      - -1.539\n      - -5.653\n  - name: 守护堡垒点\n    pixel:\n      - 386.5832275776951\n      - 805.3767378569596\n    world:\n      - -0.034\n      - -1.104\n  - name: 前哨攻击点\n    pixel:\n      - 1152.9866636805343\n      - 224.25429045364137\n    world:\n      - 7.63\n      - 4.707\n  - name: 高地守护堡垒点\n    pixel:\n      - 1098.3884094115397\n      - 746.1493680249139\n    world:\n      - 7.084\n      - -0.511\nzones:\n  - id: zone-1781438282320\n    name: 起伏路段加速区\n    rect:\n      x1: 390.4498044328554\n      y1: 1289.667535853977\n      x2: 1254.1720990873537\n      y2: 1490.808344198175\n    worldRect:\n      x1: 0.004\n      y1: -5.947\n      x2: 8.642\n      y2: -7.958\n    conditions: []\n    action: null\n    params:\n      - type: Param\n        node_name: controller_server\n        param_name: FollowPath.rotation_kp\n        param_value: '5.0'\n        param_type: double\n      - type: Param\n        node_name: serial_interfaces\n        param_name: vel_spin\n        param_value: '0.0'\n        param_type: double\n    priority: 1\n    canvasX: 120\n    canvasY: 190\n    worldPoints:\n      - 0.004\n      - -5.947\n      - 8.642\n      - -5.947\n      - 8.642\n      - -7.958\n      - 0.004\n      - -7.958\n    points:\n      - 390.4498044328554\n      - 1289.667535853977\n      - 1254.1720990873537\n      - 1289.667535853977\n      - 1254.1720990873537\n      - 1490.808344198175\n      - 390.4498044328554\n      - 1490.808344198175\n  - id: zone-1781579328379\n    name: 高地区\n    rect:\n      x1: 975.1998223801068\n      y1: 199.8756660746004\n      x2: 1824.6714031971583\n      y2: 1292.7442273534637\n    worldRect:\n      x1: 5.852\n      y1: -5.977\n      x2: 14.347\n      y2: 4.951\n    points:\n      - 975.1998223801068\n      - 1284.6847246891653\n      - 1545.8126110124335\n      - 1292.7442273534637\n      - 1789.2095914742454\n      - 944.5737122557728\n      - 1785.985790408526\n      - 509.36056838365903\n      - 1740.852575488455\n      - 390.0799289520427\n      - 1744.0763765541742\n      - 322.3801065719361\n      - 1824.6714031971583\n      - 214.3827708703375\n      - 1254.0586145648315\n      - 199.8756660746004\n      - 1005.8259325044406\n      - 551.2699822380107\n      - 1005.8259325044406\n      - 978.423623445826\n      - 1052.5710479573713\n      - 1097.7042628774425\n      - 1050.9591474245117\n      - 1168.6278863232683\n    worldPoints:\n      - 5.852\n      - -5.897\n      - 11.558\n      - -5.977\n      - 13.992\n      - -2.496\n      - 13.96\n      - 1.856\n      - 13.509\n      - 3.049\n      - 13.541\n      - 3.726\n      - 14.347\n      - 4.806\n      - 8.641\n      - 4.951\n      - 6.158\n      - 1.437\n      - 6.158\n      - -2.834\n      - 6.626\n      - -4.027\n      - 6.61\n      - -4.736\n    conditions:\n      - type: Condition\n        field: fortress_status\n        value_type: uint16\n        operator: '=='\n        threshold: 2\n    action:\n      type: Action\n      action: 高地守护堡垒点\n      loop: false\n      duration: 0\n    params: []\n    priority: 1\n    canvasX: 360\n    canvasY: 190\n  - id: zone-1781601059328\n    name: 己方半场\n    rect:\n      x1: 0\n      y1: 1.7730905861456487\n      x2: 1253.5750444049736\n      y2: 1487.6230017761993\n    worldRect:\n      x1: -3.9\n      y1: -7.926\n      x2: 8.636\n      y2: 6.932\n    points:\n      - 1.7730905861456487\n      - 8.865452930728244\n      - 0\n      - 1487.6230017761993\n      - 343.97957371225584\n      - 1476.9844582593253\n      - 349.2988454706928\n      - 1276.625222024867\n      - 959.2420071047959\n      - 1285.4906749555953\n      - 1040.8041740674958\n      - 1172.0128774422737\n      - 1039.0310834813502\n      - 1102.8623445825936\n      - 914.9147424511547\n      - 804.9831261101245\n      - 916.6878330373004\n      - 661.362788632327\n      - 1253.5750444049736\n      - 182.6283303730018\n      - 1246.482682060391\n      - 1.7730905861456487\n    worldPoints:\n      - -3.882\n      - 6.861\n      - -3.9\n      - -7.926\n      - -0.46\n      - -7.82\n      - -0.407\n      - -5.816\n      - 5.692\n      - -5.905\n      - 6.508\n      - -4.77\n      - 6.49\n      - -4.079\n      - 5.249\n      - -1.1\n      - 5.267\n      - 0.336\n      - 8.636\n      - 5.124\n      - 8.565\n      - 6.932\n    conditions: []\n    action:\n      type: Action\n      action: 补给点\n      loop: false\n      duration: 0\n    params: []\n    priority: 1\n    canvasX: 600\n    canvasY: 450\ndecision_tree:\n  root:\n    type: Selector\n    children:\n      - type: Sequence\n        priority: 1\n        children:\n          - type: Condition\n            field: game_progress\n            value_type: uint16\n            operator: '=='\n            threshold: 4\n          - type: Zone\n            zone_id: zone-1781438282320\n            zone_name: 起伏路段加速区\n            action: null\n            conditions: []\n            params:\n              - type: Param\n                node_name: controller_server\n                param_name: FollowPath.rotation_kp\n                param_value: '5.0'\n                param_type: double\n              - type: Param\n                node_name: serial_interfaces\n                param_name: vel_spin\n                param_value: '0.0'\n                param_type: double\n      - type: Sequence\n        priority: 1\n        children:\n          - type: Condition\n            field: game_progress\n            value_type: uint16\n            operator: '=='\n            threshold: 4\n          - type: Zone\n            zone_id: zone-1781579328379\n            zone_name: 高地区\n            action:\n              type: Action\n              action: 高地守护堡垒点\n              loop: false\n              duration: 0\n            conditions:\n              - type: Condition\n                field: fortress_status\n                value_type: uint16\n                operator: '=='\n                threshold: 2\n            params: []\n      - type: Sequence\n        priority: 3\n        children:\n          - type: Condition\n            field: game_progress\n            value_type: uint16\n            operator: '=='\n            threshold: 4\n          - type: Condition\n            field: target_position_x\n            value_type: float32\n            operator: '!='\n            threshold: 0\n          - type: Condition\n            field: target_position_y\n            value_type: float32\n            operator: '!='\n            threshold: 0\n          - type: Zone\n            zone_id: zone-1781601059328\n            zone_name: 己方半场\n            action:\n              type: Action\n              action: 补给点\n              loop: false\n              duration: 0\n            conditions: []\n            params: []\n          - type: Action\n            action: STOP\n            duration: 2\n            exit_condition:\n              field: current_hp\n              value_type: uint16\n              operator: '>='\n              threshold: 400\n          - type: Action\n            action: REFEREE_TARGET\n            actions:\n              - REFEREE_TARGET\n            loop: true\n      - type: Sequence\n        priority: 3\n        children:\n          - type: Condition\n            field: game_progress\n            value_type: uint16\n            operator: '=='\n            threshold: 4\n          - type: Condition\n            field: target_position_x\n            value_type: float32\n            operator: '!='\n            threshold: 0\n          - type: Condition\n            field: target_position_y\n            value_type: float32\n            operator: '!='\n            threshold: 0\n          - type: Action\n            action: REFEREE_TARGET\n            actions:\n              - REFEREE_TARGET\n            loop: true\n      - type: Sequence\n        priority: 4\n        children:\n          - type: Condition\n            field: game_progress\n            value_type: uint16\n            operator: '=='\n            threshold: 4\n          - type: Condition\n            field: current_hp\n            value_type: uint16\n            operator: <\n            threshold: 150\n          - type: Action\n            action: 补给点\n            exit_condition:\n              field: current_hp\n              value_type: uint16\n              operator: '>='\n              threshold: 400\n      - type: Sequence\n        priority: 5\n        children:\n          - type: Condition\n            field: game_progress\n            value_type: uint16\n            operator: '=='\n            threshold: 4\n          - type: Condition\n            field: shoot_num\n            value_type: uint16\n            operator: <=\n            threshold: 30\n          - type: Action\n            action: 补给点\n            exit_condition:\n              field: shoot_num\n              value_type: uint16\n              operator: '>='\n              threshold: 100\n      - type: Sequence\n        priority: 6\n        children:\n          - type: Condition\n            field: game_progress\n            value_type: uint16\n            operator: '=='\n            threshold: 4\n          - type: Condition\n            field: fortress_status\n            value_type: uint16\n            operator: '=='\n            threshold: 2\n          - type: Condition\n            field: vision_status\n            value_type: uint8\n            operator: '=='\n            threshold: 1\n          - type: Action\n            action: STOP\n      - type: Sequence\n        priority: 6\n        children:\n          - type: Condition\n            field: game_progress\n            value_type: uint16\n            operator: '=='\n            threshold: 4\n          - type: Condition\n            field: fortress_status\n            value_type: uint16\n            operator: '=='\n            threshold: 2\n          - type: Action\n            action: 守护堡垒点\n      - type: Sequence\n        priority: 7\n        children:\n          - type: Condition\n            field: game_progress\n            value_type: uint16\n            operator: '=='\n            threshold: 4\n          - type: Condition\n            field: fortress_status\n            value_type: uint16\n            operator: '!='\n            threshold: 2\n          - type: Action\n            action: 前哨攻击点\n          - type: Condition\n            field: vision_status\n            value_type: uint8\n            operator: '=='\n            threshold: 1\n          - type: Action\n            action: 前哨攻击点\n            actions:\n              - 前哨攻击点\n            loop: true\n      - type: Sequence\n        priority: 7\n        children:\n          - type: Condition\n            field: game_progress\n            value_type: uint16\n            operator: '=='\n            threshold: 4\n          - type: Condition\n            field: fortress_status\n            value_type: uint16\n            operator: '!='\n            threshold: 2\n          - type: Action\n            action: 前哨攻击点\n          - type: Action\n            action: 前哨攻击点\n            actions:\n              - 前哨攻击点\n            loop: true\n"
 }

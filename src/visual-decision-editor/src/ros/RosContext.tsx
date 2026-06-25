@@ -31,6 +31,13 @@ export function RosProvider({ children }: { children: React.ReactNode }) {
     // engine can stay transport-agnostic.
     const currentGoalIdRef = React.useRef<string | null>(null);
     const goalCounterRef = React.useRef(0);
+    // Track the most-recently-sent goal so the engine's reactive-preemption cancel
+    // (which fires in the same tick right after sending a new goal) does not cancel
+    // the goal it just sent. C++ avoids this because current_goal_handle_ is only set
+    // in the async goal_response callback; rosbridge has no separate accepted event,
+    // so we guard with a short time window instead.
+    const lastSentCidRef = React.useRef<string | null>(null);
+    const lastSentMsRef = React.useRef(0);
     const socketListenerRef = React.useRef<((ev: MessageEvent) => void) | null>(null);
 
     const [state, setState] = React.useState<RosConnectionState>('disconnected');
@@ -70,7 +77,14 @@ export function RosProvider({ children }: { children: React.ReactNode }) {
                 ros, name: '/referee', messageType: 'sentry_msgs/msg/Referee',
                 throttle_rate: 0,
             });
-            refereeTopic.subscribe((msg) => setLatestReferee(msg as unknown as Referee));
+            let refereeReceivedOnce = false;
+            refereeTopic.subscribe((msg) => {
+                if (!refereeReceivedOnce) {
+                    refereeReceivedOnce = true;
+                    console.info('[ros] 收到 /referee 数据流');
+                }
+                setLatestReferee(msg as unknown as Referee);
+            });
 
             const odomTopic = new ROSLIB.Topic({
                 ros, name: '/odom', messageType: 'nav_msgs/msg/Odometry',
@@ -120,8 +134,20 @@ export function RosProvider({ children }: { children: React.ReactNode }) {
     const sendGoalPose = React.useCallback((poseStamped: PoseStamped) => {
         const ros = rosRef.current;
         if (!ros) return;
+        // Cancel the previously-active goal before sending a new one (mirrors C++
+        // tickAction canceling the old goal on target mismatch). Done here so the
+        // engine's reactive-preemption cancel (fired in the same tick) can be a no-op
+        // for the goal we just sent.
+        const prevCid = currentGoalIdRef.current;
+        if (prevCid) {
+            ros.callOnConnection({
+                op: 'cancel_action_goal', id: prevCid, action: '/navigate_to_pose',
+            } as any);
+        }
         const cid = `nav-${Date.now()}-${++goalCounterRef.current}`;
         currentGoalIdRef.current = cid;
+        lastSentCidRef.current = cid;
+        lastSentMsRef.current = Date.now();
         // rosbridge native action op (ROS2). roslibjs has no ROS2 action support, so we
         // send the raw op via callOnConnection.
         ros.callOnConnection({
@@ -156,13 +182,18 @@ export function RosProvider({ children }: { children: React.ReactNode }) {
         cancelCurrentGoal: () => {
             const ros = rosRef.current;
             const cid = currentGoalIdRef.current;
-            if (ros && cid) {
-                ros.callOnConnection({
-                    op: 'cancel_action_goal',
-                    id: cid,
-                    action: '/navigate_to_pose',
-                } as any);
+            if (!ros || !cid) return;
+            // Skip if this is the goal we just sent in the same tick (within 200ms):
+            // the old goal was already canceled by sendGoalPose's pre-cancel, and
+            // canceling here would kill the new goal we intend to keep running.
+            if (cid === lastSentCidRef.current && Date.now() - lastSentMsRef.current < 200) {
+                return;
             }
+            ros.callOnConnection({
+                op: 'cancel_action_goal',
+                id: cid,
+                action: '/navigate_to_pose',
+            } as any);
             currentGoalIdRef.current = null;
         },
         publishCmdVel: (twist) => {

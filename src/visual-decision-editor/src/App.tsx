@@ -47,6 +47,14 @@ function Editor() {
         setLastChangeTime(Date.now());
     }, []);
 
+    // Mirror canvas node state up so the decision engine can rebuild its tree.
+    // Stable identity (useCallback) so CanvasDecisionTree's autosave effect does
+    // not re-fire every render and needlessly push the same nodes array.
+    const handleNodesChange = React.useCallback((nodes: any[]) => {
+        setCanvasNodes(nodes);
+        setLastChangeTime(Date.now());
+    }, []);
+
     // Restore persisted data on mount + Sync with server
     React.useEffect(() => {
         const loadInitialData = async () => {
@@ -218,10 +226,7 @@ function Editor() {
                         waypoints={waypoints}
                         zones={zones}
                         onZonesChange={handleZonesChange}
-                        onNodesChange={(nodes) => {
-                            setCanvasNodes(nodes);
-                            setLastChangeTime(Date.now());
-                        }}
+                        onNodesChange={handleNodesChange}
                         runningNodeIds={engine.runningNodeIds}
                         currentPathIds={engine.currentPathIds}
                     />

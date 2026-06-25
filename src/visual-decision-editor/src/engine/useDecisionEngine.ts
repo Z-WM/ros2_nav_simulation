@@ -97,13 +97,17 @@ export function useDecisionEngine(
         if (ref) engine.setReferee(ref);
         if (odom) engine.setOdom(odom);
 
-        const st = engine.tick();
-        setStatus(st === NodeStatus.RUNNING ? 'running'
-            : st === NodeStatus.SUCCESS ? 'success' : 'failure');
-        setRunningNodeIds(new Set(engine.getRunningNodeIds()));
-        setCurrentPathIds([...engine.getCurrentPathIds()]);
-        setTargetWaypoint(engine.getTargetWaypoint());
-    }, []);
+        try {
+            const st = engine.tick();
+            setStatus(st === NodeStatus.RUNNING ? 'running'
+                : st === NodeStatus.SUCCESS ? 'success' : 'failure');
+            setRunningNodeIds(new Set(engine.getRunningNodeIds()));
+            setCurrentPathIds([...engine.getCurrentPathIds()]);
+            setTargetWaypoint(engine.getTargetWaypoint());
+        } catch (e) {
+            addLog(`tick 异常: ${(e as Error).message}`);
+        }
+    }, [addLog]);
 
     const start = React.useCallback(() => {
         if (timerRef.current) return;

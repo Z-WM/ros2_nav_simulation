@@ -1,5 +1,6 @@
 import { NodeStatus } from './Status';
 import { isPointInPolygon } from './pointInPolygon';
+import { getFieldValue } from './fieldMapper';
 import {
     DecisionNode,
     ConditionNode,
@@ -85,6 +86,10 @@ export class DecisionEngine {
     private runningNodeIds: Set<string> = new Set();
     private currentPathIds: string[] = [];
 
+    // Diagnostic throttle: log top-level branch evaluation ~2Hz to help debug
+    // reactive preemption (why a higher-priority branch isn't being chosen).
+    private lastDiagLog = 0;
+
     constructor(
         root: SelectorNode,
         waypoints: Record<string, { x: number; y: number }>,
@@ -161,7 +166,42 @@ export class DecisionEngine {
         if (status !== NodeStatus.RUNNING) {
             this.resetContext();
         }
+        this.emitDiagnostics(this.latestMsg, status);
         return status;
+    }
+
+    /**
+     * Diagnostic: log each top-level Sequence's first Condition evaluation +
+     * which branch the Selector chose. Throttled to ~2Hz. Helps diagnose why a
+     * higher-priority branch isn't pre-empting a running lower-priority one.
+     */
+    private emitDiagnostics(msg: Referee, chosenStatus: NodeStatus) {
+        const now = nowMs();
+        if (now - this.lastDiagLog < 500) return; // 2Hz cap
+        this.lastDiagLog = now;
+
+        const children = this.root.children;
+        const parts: string[] = [];
+        for (let i = 0; i < children.length; ++i) {
+            const child = children[i];
+            if (child.type !== 'Sequence') continue;
+            const seq = child as SequenceNode;
+            const first = seq.children[0];
+            if (!first || first.type !== 'Condition') {
+                parts.push(`[#${i} p${seq.priority} skip]`);
+                continue;
+            }
+            const cond = first as ConditionNode;
+            let fieldValue: string;
+            try { fieldValue = String(getFieldValue(cond.field, msg)); }
+            catch { fieldValue = '?'; }
+            let result: boolean;
+            try { result = cond.evaluate(msg); }
+            catch (e) { parts.push(`[#${i} p${seq.priority} ${cond.field}${cond.operator}${cond.threshold} ERR:${(e as Error).message}]`); continue; }
+            const isCurrent = this.ctx.currentSequence === seq;
+            parts.push(`[#${i} p${seq.priority}${isCurrent ? '*' : ''} ${cond.field}=${fieldValue}${cond.operator}${cond.threshold}=>${result ? 'T' : 'F'}]`);
+        }
+        this.cb.log?.(`diag ${chosenStatus === NodeStatus.RUNNING ? 'RUN' : chosenStatus === NodeStatus.SUCCESS ? 'OK' : 'FAIL'} | ${parts.join(' ')}`);
     }
 
     // ===== tickSelector (DecisionExecutor.cpp:322) =====
