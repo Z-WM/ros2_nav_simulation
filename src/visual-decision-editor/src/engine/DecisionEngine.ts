@@ -67,10 +67,11 @@ export class DecisionEngine {
         failureTimestamps: new Map(),
     };
 
-    // Nav2 state machine (mirrors goal_in_progress_ / last_nav_succeeded_ /
-    // referee_target_active_). The active goal id is owned by the ROS bridge.
-    private goalInProgress = false;
-    private lastNavSucceeded = false;
+    // Nav2 is driven by publishing /goal_pose (a new pose preempts the current goal),
+    // so there is no action goal handle / result state machine. Arrival is detected by
+    // odom distance to the target waypoint (mirrors C++ isCloseToWaypoint, threshold 0.3m).
+    // refereeTargetActive tracks the last referee-provided target to avoid republishing
+    // the same /goal_pose every tick.
     private refereeTargetActive = false;
     private activeRefereeTargetX = 0.0;
     private activeRefereeTargetY = 0.0;
@@ -105,18 +106,6 @@ export class DecisionEngine {
     setReferee(msg: Referee) { this.latestMsg = msg; }
     setOdom(msg: Odometry) { this.currentOdom = msg; }
 
-    /**
-     * Called when a nav action result arrives. Mirrors DecisionExecutor::resultCallback.
-     * The ROS bridge only forwards results for the currently-active goal id, so any
-     * result received here is guaranteed to belong to the current goal (equivalent to
-     * C++ ignoring non-current goals via current_goal_handle_ comparison).
-     */
-    onActionResult(_goalId: string, succeeded: boolean) {
-        this.goalInProgress = false;
-        this.lastNavSucceeded = succeeded;
-        // goalSent left as-is so tickNode can read result (mirrors C++ comment at resultCallback).
-    }
-
     getRunningNodeIds(): Set<string> { return this.runningNodeIds; }
     getCurrentPathIds(): string[] { return this.currentPathIds; }
 
@@ -136,12 +125,10 @@ export class DecisionEngine {
     }
 
     private cancelCurrentGoal() {
-        // The ROS bridge tracks the active goal id; we gate on goalInProgress as the
-        // proxy for "a goal handle exists" (mirrors C++ `if (current_goal_handle_)`).
-        if (this.goalInProgress) {
-            this.cb.cancelCurrentGoal();
-        }
-        this.goalInProgress = false;
+        // In /goal_pose topic mode there is no explicit action cancel; a new goal_pose
+        // preempts the running goal. This is a no-op transport call (kept for parity
+        // with the C++ call sites that gate preemption on cancelCurrentGoal).
+        this.cb.cancelCurrentGoal();
     }
 
     private setRemoteParameter(config: ParamConfig) {
@@ -241,7 +228,7 @@ export class DecisionEngine {
         }
 
         // All children failed
-        if (this.ctx.goalSent || this.goalInProgress) this.cancelCurrentGoal();
+        if (this.ctx.goalSent) this.cancelCurrentGoal();
         this.resetContext();
         return NodeStatus.FAILURE;
     }
@@ -345,7 +332,31 @@ export class DecisionEngine {
             Math.abs(this.activeRefereeTargetY - y) < REFEREE_TARGET_EPSILON;
     }
 
-    // ===== tickRefereeTargetAction (DecisionExecutor.cpp:529) =====
+    /** Distance from current odom position to a world (x,y). -1 if no odom. */
+    private distanceTo(x: number, y: number): number {
+        if (!this.currentOdom) return Number.POSITIVE_INFINITY;
+        const dx = this.currentOdom.pose.pose.position.x - x;
+        const dy = this.currentOdom.pose.pose.position.y - y;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    /** True if robot is within `threshold` meters of a named waypoint. Mirrors C++ isCloseToWaypoint. */
+    private isCloseToWaypoint(waypointName: string, threshold = 0.3): boolean {
+        const wp = this.waypoints[waypointName];
+        if (!wp) return false;
+        return this.distanceTo(wp.x, wp.y) < threshold;
+    }
+
+    /** Current robot (x,y) from odom; null if no odom. */
+    private currentPoseXY(): { x: number; y: number } | null {
+        if (!this.currentOdom) return null;
+        return {
+            x: this.currentOdom.pose.pose.position.x,
+            y: this.currentOdom.pose.pose.position.y,
+        };
+    }
+
+    // ===== tickRefereeTargetAction (topic-mode: publish /goal_pose, odom-distance arrival) =====
     private tickRefereeTargetAction(msg: Referee, actionId: string): NodeStatus {
         const x = msg.target_position_x;
         const y = msg.target_position_y;
@@ -359,41 +370,32 @@ export class DecisionEngine {
             this.activeRefereeTargetY = 0.0;
             this.ctx.goalSent = false;
             this.ctx.targetWaypoint = '';
-            this.lastNavSucceeded = false;
             return NodeStatus.FAILURE;
         }
 
         const targetChanged = !this.isSameRefereeTarget(x, y);
         const actionChanged = this.ctx.targetWaypoint !== REFEREE_TARGET_ACTION;
 
+        // Publish /goal_pose on first tick, target change, or action change.
         if (!this.ctx.goalSent || actionChanged || targetChanged) {
-            if (this.ctx.goalSent || this.goalInProgress) {
-                this.cancelCurrentGoal();
-            }
             this.activeRefereeTargetX = x;
             this.activeRefereeTargetY = y;
             this.refereeTargetActive = true;
             this.ctx.targetWaypoint = REFEREE_TARGET_ACTION;
             this.ctx.goalSent = true;
             this.cb.sendNavigationGoalToPose(x, y, 'referee target');
-            // Mirrors C++ sendNavigationGoalToPose: goal_in_progress_=true; last_nav_succeeded_=false;
-            this.goalInProgress = true;
-            this.lastNavSucceeded = false;
             return NodeStatus.RUNNING;
         }
 
-        if (!this.goalInProgress) {
-            if (this.lastNavSucceeded) {
-                this.ctx.actionStartTimes.delete(actionId);
-                this.ctx.goalSent = false;
-                this.ctx.targetWaypoint = '';
-                this.refereeTargetActive = false;
-                this.activeRefereeTargetX = 0.0;
-                this.activeRefereeTargetY = 0.0;
-                return NodeStatus.SUCCESS;
-            }
+        // Arrival by odom distance.
+        if (this.distanceTo(x, y) < 0.3) {
+            this.ctx.actionStartTimes.delete(actionId);
             this.ctx.goalSent = false;
-            return NodeStatus.RUNNING;
+            this.ctx.targetWaypoint = '';
+            this.refereeTargetActive = false;
+            this.activeRefereeTargetX = 0.0;
+            this.activeRefereeTargetY = 0.0;
+            return NodeStatus.SUCCESS;
         }
 
         return NodeStatus.RUNNING;
@@ -448,7 +450,16 @@ export class DecisionEngine {
 
         // STOP
         if (waypoint === 'STOP') {
-            if (this.goalInProgress) this.cancelCurrentGoal();
+            // Publish the robot's current odom pose as /goal_pose so Nav2 plans a
+            // zero-length path and halts (approximates C++ cancel+zero cmd_vel, since
+            // topic mode has no action cancel). Also keep publishing zero cmd_vel to
+            // suppress residual motion.
+            const pose = this.currentPoseXY();
+            if (pose && (!this.ctx.goalSent || this.ctx.targetWaypoint !== '__STOP__')) {
+                this.cb.sendNavigationGoalToPose(pose.x, pose.y, 'stop');
+                this.ctx.goalSent = true;
+                this.ctx.targetWaypoint = '__STOP__';
+            }
             this.cb.publishCmdVel({
                 linear: { x: 0, y: 0, z: 0 },
                 angular: { x: 0, y: 0, z: 0 },
@@ -462,6 +473,8 @@ export class DecisionEngine {
                 }
                 this.ctx.actionStartTimes.delete(nodeId);
                 this.ctx.actionIndices.set(nodeId, currentActIdx + 1);
+                this.ctx.goalSent = false;
+                this.ctx.targetWaypoint = '';
                 return NodeStatus.RUNNING;
             }
             if (action.duration > 0.0) {
@@ -469,6 +482,8 @@ export class DecisionEngine {
                 if ((nowMs() - start) / 1000 >= action.duration) {
                     this.ctx.actionStartTimes.delete(nodeId);
                     this.ctx.actionIndices.set(nodeId, currentActIdx + 1);
+                    this.ctx.goalSent = false;
+                    this.ctx.targetWaypoint = '';
                     return NodeStatus.RUNNING;
                 }
                 return NodeStatus.RUNNING;
@@ -496,9 +511,8 @@ export class DecisionEngine {
             this.ctx.failureTimestamps.delete(waypoint);
         }
 
-        // Send/resend goal on first tick or target mismatch.
+        // Publish /goal_pose on first tick or target mismatch (preempts current nav).
         if (!this.ctx.goalSent || this.ctx.targetWaypoint !== waypoint) {
-            if (this.ctx.goalSent) this.cancelCurrentGoal();
             const wp = this.waypoints[waypoint];
             if (!wp) {
                 this.cb.log?.(`Unknown waypoint: ${waypoint}`);
@@ -511,47 +525,37 @@ export class DecisionEngine {
                     orientation: { x: 0, y: 0, z: 0, w: 1.0 },
                 },
             });
-            // Mirrors C++ sendNavigationGoal: goal_in_progress_=true; last_nav_succeeded_=false;
-            this.goalInProgress = true;
-            this.lastNavSucceeded = false;
             this.ctx.goalSent = true;
             this.ctx.targetWaypoint = waypoint;
             return NodeStatus.RUNNING;
         }
 
-        // Nav2 stopped (result arrived).
-        if (!this.goalInProgress) {
-            if (this.lastNavSucceeded) {
-                if (action.duration > 0.0 && !this.ctx.actionStartTimes.has(nodeId)) {
-                    this.ctx.actionStartTimes.set(nodeId, nowMs());
-                }
-                if (action.hasExitCondition()) {
-                    if (!action.checkExitCondition(msg)) {
-                        this.ctx.goalSent = false;
-                        return NodeStatus.RUNNING;
-                    }
-                }
-                if (action.duration > 0.0) {
-                    const start = this.ctx.actionStartTimes.get(nodeId)!;
-                    if ((nowMs() - start) / 1000 < action.duration) {
-                        this.ctx.goalSent = false;
-                        return NodeStatus.RUNNING;
-                    }
-                }
-                this.ctx.actionStartTimes.delete(nodeId);
-                this.ctx.actionIndices.set(nodeId, currentActIdx + 1);
-                this.ctx.goalSent = false;
-                this.ctx.targetWaypoint = '';
-                return NodeStatus.RUNNING;
+        // Arrival by odom distance (mirrors C++ isCloseToWaypoint, threshold 0.3m).
+        if (this.isCloseToWaypoint(waypoint, 0.3)) {
+            if (action.duration > 0.0 && !this.ctx.actionStartTimes.has(nodeId)) {
+                this.ctx.actionStartTimes.set(nodeId, nowMs());
             }
-            // Stopped but not reached: retry, do not fail.
+            if (action.hasExitCondition()) {
+                if (!action.checkExitCondition(msg)) {
+                    return NodeStatus.RUNNING; // hold at waypoint until exit condition met
+                }
+            }
+            if (action.duration > 0.0) {
+                const start = this.ctx.actionStartTimes.get(nodeId)!;
+                if ((nowMs() - start) / 1000 < action.duration) {
+                    return NodeStatus.RUNNING; // holding for duration
+                }
+            }
+            // Arrived (and held long enough) -> advance to next action.
+            this.ctx.actionStartTimes.delete(nodeId);
+            this.ctx.actionIndices.set(nodeId, currentActIdx + 1);
             this.ctx.goalSent = false;
+            this.ctx.targetWaypoint = '';
             return NodeStatus.RUNNING;
         }
 
-        // goal_in_progress_: check exit condition while moving.
+        // Still navigating toward the waypoint. Exit condition while moving can preempt.
         if (action.hasExitCondition() && action.checkExitCondition(msg)) {
-            this.cancelCurrentGoal();
             this.ctx.actionStartTimes.delete(nodeId);
             this.ctx.actionIndices.set(nodeId, currentActIdx + 1);
             this.ctx.goalSent = false;

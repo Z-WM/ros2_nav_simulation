@@ -14,7 +14,10 @@ interface RosContextValue {
     disconnect: () => void;
     latestReferee: Referee | null;
     latestOdom: Odometry | null;
-    // Action / publisher / service callbacks wired to roslibjs.
+    // Navigation is driven by publishing PoseStamped to /goal_pose (bt_navigator
+    // subscribes and preempts the current goal on each new pose — same interface as
+    // RViz's "2D Goal Pose"). This avoids the rosbridge action protocol entirely
+    // (which crashes rosbridge 2.0.6 via ActionClient.destroy() vs. the spin thread).
     sendNavigationGoal: (waypointName: string, pose: PoseStamped) => void;
     sendNavigationGoalToPose: (x: number, y: number, label: string) => void;
     cancelCurrentGoal: () => void;
@@ -27,38 +30,18 @@ const RosContext = React.createContext<RosContextValue | null>(null);
 export function RosProvider({ children }: { children: React.ReactNode }) {
     const rosRef = React.useRef<ROSLIB.Ros | null>(null);
     const cmdVelPubRef = React.useRef<ROSLIB.Topic | null>(null);
-    // Active nav goal id (rosbridge send_action_goal cid). Owns goal tracking so the
-    // engine can stay transport-agnostic.
-    const currentGoalIdRef = React.useRef<string | null>(null);
-    const goalCounterRef = React.useRef(0);
-    // Track the most-recently-sent goal so the engine's reactive-preemption cancel
-    // (which fires in the same tick right after sending a new goal) does not cancel
-    // the goal it just sent. C++ avoids this because current_goal_handle_ is only set
-    // in the async goal_response callback; rosbridge has no separate accepted event,
-    // so we guard with a short time window instead.
-    const lastSentCidRef = React.useRef<string | null>(null);
-    const lastSentMsRef = React.useRef(0);
-    const socketListenerRef = React.useRef<((ev: MessageEvent) => void) | null>(null);
+    const goalPosePubRef = React.useRef<ROSLIB.Topic | null>(null);
 
     const [state, setState] = React.useState<RosConnectionState>('disconnected');
     const [errorMessage, setErrorMessage] = React.useState('');
     const [latestReferee, setLatestReferee] = React.useState<Referee | null>(null);
     const [latestOdom, setLatestOdom] = React.useState<Odometry | null>(null);
 
-    const resultListeners = React.useRef<Array<(goalId: string, succeeded: boolean) => void>>([]);
-
     const teardown = React.useCallback(() => {
-        // Remove our raw message listener from the underlying WebSocket.
-        const ros = rosRef.current;
-        if (ros && socketListenerRef.current) {
-            try { ((ros as any).socket as WebSocket).removeEventListener('message', socketListenerRef.current); }
-            catch { /* ignore */ }
-        }
-        socketListenerRef.current = null;
-        currentGoalIdRef.current = null;
         cmdVelPubRef.current = null;
-        if (ros) {
-            try { ros.close(); } catch { /* ignore */ }
+        goalPosePubRef.current = null;
+        if (rosRef.current) {
+            try { rosRef.current.close(); } catch { /* ignore */ }
             rosRef.current = null;
         }
     }, []);
@@ -91,30 +74,16 @@ export function RosProvider({ children }: { children: React.ReactNode }) {
             });
             odomTopic.subscribe((msg) => setLatestOdom(msg as unknown as Odometry));
 
-            // cmd_vel publisher
+            // cmd_vel publisher (for STOP)
             cmdVelPubRef.current = new ROSLIB.Topic({
                 ros, name: 'cmd_vel', messageType: 'geometry_msgs/msg/Twist',
             });
 
-            // Nav2 action results come back as the rosbridge `action_result` op, which
-            // roslibjs's SocketAdapter silently drops. Listen on the raw WebSocket via
-            // addEventListener (independent of roslibjs's onmessage) to catch them.
-            const onMessage = (ev: MessageEvent) => {
-                let msg: any;
-                try { msg = JSON.parse(typeof ev.data === 'string' ? ev.data : '{}'); }
-                catch { return; }
-                if (!msg || msg.op !== 'action_result') return;
-                // Only forward results for the currently-active goal (mirrors C++
-                // resultCallback ignoring non-current goals).
-                if (currentGoalIdRef.current == null || msg.id !== currentGoalIdRef.current) return;
-                const cid = currentGoalIdRef.current;
-                const succeeded = msg.result === true && Number(msg.status) === 4; // STATUS_SUCCEEDED
-                currentGoalIdRef.current = null;
-                resultListeners.current.forEach((fn) => fn(cid, succeeded));
-            };
-            socketListenerRef.current = onMessage;
-            try { ((ros as any).socket as WebSocket).addEventListener('message', onMessage); }
-            catch { /* socket not ready */ }
+            // /goal_pose publisher — drives Nav2 navigation. A new pose preempts the
+            // current goal automatically (no action cancel needed).
+            goalPosePubRef.current = new ROSLIB.Topic({
+                ros, name: '/goal_pose', messageType: 'geometry_msgs/msg/PoseStamped',
+            });
         });
 
         ros.on('error', (err) => {
@@ -131,71 +100,31 @@ export function RosProvider({ children }: { children: React.ReactNode }) {
     // Cleanup on unmount
     React.useEffect(() => () => { teardown(); }, [teardown]);
 
-    const sendGoalPose = React.useCallback((poseStamped: PoseStamped) => {
-        const ros = rosRef.current;
-        if (!ros) return;
-        // Cancel the previously-active goal before sending a new one (mirrors C++
-        // tickAction canceling the old goal on target mismatch). Done here so the
-        // engine's reactive-preemption cancel (fired in the same tick) can be a no-op
-        // for the goal we just sent.
-        const prevCid = currentGoalIdRef.current;
-        if (prevCid) {
-            ros.callOnConnection({
-                op: 'cancel_action_goal', id: prevCid, action: '/navigate_to_pose',
-            } as any);
-        }
-        const cid = `nav-${Date.now()}-${++goalCounterRef.current}`;
-        currentGoalIdRef.current = cid;
-        lastSentCidRef.current = cid;
-        lastSentMsRef.current = Date.now();
-        // rosbridge native action op (ROS2). roslibjs has no ROS2 action support, so we
-        // send the raw op via callOnConnection.
-        ros.callOnConnection({
-            op: 'send_action_goal',
-            id: cid,
-            action: '/navigate_to_pose',
-            action_type: 'nav2_msgs/action/NavigateToPose',
-            args: { pose: poseStamped, behavior_tree: '' },
-            feedback: false,
-        } as any);
-    }, []);
-
-    const registerResultListener = React.useCallback((fn: (goalId: string, succeeded: boolean) => void) => {
-        resultListeners.current.push(fn);
-        return () => {
-            resultListeners.current = resultListeners.current.filter((f) => f !== fn);
+    const publishGoalPose = React.useCallback((pose: PoseStamped) => {
+        // Ensure header is set (frame_id='map'); roslibjs accepts a plain object.
+        const msg = {
+            header: pose.header?.frame_id ? pose.header : { stamp: { sec: 0, nanosec: 0 }, frame_id: 'map' },
+            pose: pose.pose,
         };
+        goalPosePubRef.current?.publish(msg as any);
     }, []);
 
     const value: RosContextValue = {
         state, errorMessage,
         connect, disconnect,
         latestReferee, latestOdom,
-        sendNavigationGoal: (_name, pose) => sendGoalPose(pose),
-        sendNavigationGoalToPose: (x, y, _label) => sendGoalPose({
+        sendNavigationGoal: (_name, pose) => publishGoalPose(pose),
+        sendNavigationGoalToPose: (x, y, _label) => publishGoalPose({
             header: { stamp: { sec: 0, nanosec: 0 }, frame_id: 'map' },
             pose: {
                 position: { x, y, z: 0.0 },
                 orientation: { x: 0, y: 0, z: 0, w: 1.0 },
             },
         }),
-        cancelCurrentGoal: () => {
-            const ros = rosRef.current;
-            const cid = currentGoalIdRef.current;
-            if (!ros || !cid) return;
-            // Skip if this is the goal we just sent in the same tick (within 200ms):
-            // the old goal was already canceled by sendGoalPose's pre-cancel, and
-            // canceling here would kill the new goal we intend to keep running.
-            if (cid === lastSentCidRef.current && Date.now() - lastSentMsRef.current < 200) {
-                return;
-            }
-            ros.callOnConnection({
-                op: 'cancel_action_goal',
-                id: cid,
-                action: '/navigate_to_pose',
-            } as any);
-            currentGoalIdRef.current = null;
-        },
+        // No action cancel in topic mode; preemption is implicit via a new /goal_pose.
+        // The engine calls this on STOP/branch-switch but it is a no-op here — STOP
+        // publishes the current odom pose as the goal to halt the robot.
+        cancelCurrentGoal: () => { /* no-op: /goal_pose preempts implicitly */ },
         publishCmdVel: (twist) => {
             cmdVelPubRef.current?.publish(twist);
         },
@@ -221,9 +150,6 @@ export function RosProvider({ children }: { children: React.ReactNode }) {
         },
     };
 
-    // expose registerResultListener via a side channel attached to value (hack-free: custom hook)
-    (value as any).__registerResultListener = registerResultListener;
-
     return <RosContext.Provider value={value}>{children}</RosContext.Provider>;
 }
 
@@ -231,16 +157,4 @@ export function useRos(): RosContextValue {
     const ctx = React.useContext(RosContext);
     if (!ctx) throw new Error('useRos must be used within RosProvider');
     return ctx;
-}
-
-/** Register a listener for nav action results (used by the engine to update state). */
-export function useActionResultListener(fn: (goalId: string, succeeded: boolean) => void) {
-    const ctx = React.useContext(RosContext);
-    const register = (ctx as any)?.__registerResultListener as
-        | ((fn: (goalId: string, succeeded: boolean) => void) => () => void)
-        | undefined;
-    React.useEffect(() => {
-        if (!register) return;
-        return register(fn);
-    }, [register, fn]);
 }

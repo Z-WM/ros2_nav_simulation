@@ -1,7 +1,7 @@
 import React from 'react';
 import { DecisionEngine } from './DecisionEngine';
 import { parseCanvasToTree } from './parseCanvasToTree';
-import { useRos, useActionResultListener } from '../ros/RosContext';
+import { useRos } from '../ros/RosContext';
 import { NodeStatus } from './Status';
 
 export interface EngineState {
@@ -82,12 +82,6 @@ export function useDecisionEngine(
     const odomRef = React.useRef(ros.latestOdom);
     React.useEffect(() => { refereeRef.current = ros.latestReferee; }, [ros.latestReferee]);
     React.useEffect(() => { odomRef.current = ros.latestOdom; }, [ros.latestOdom]);
-
-    // Wire nav action results into the engine.
-    const onResult = React.useCallback((goalId: string, succeeded: boolean) => {
-        engineRef.current?.onActionResult(goalId, succeeded);
-    }, []);
-    useActionResultListener(onResult);
 
     const tick = React.useCallback(() => {
         const engine = engineRef.current;
