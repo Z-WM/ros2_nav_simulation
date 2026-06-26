@@ -4,7 +4,6 @@
 #include <QHBoxLayout>
 #include <QGridLayout>
 #include <QFileDialog>
-#include <algorithm>
 #include <fstream>
 #include <iomanip>
 
@@ -63,11 +62,19 @@ WaypointPanel::WaypointPanel(QWidget * parent)
   restart_button_ = new QPushButton("Restart All");
   cancel_button_ = new QPushButton("Stop Nav");
   clear_button_ = new QPushButton("Clear All");
-  
-  ctrl_layout->addWidget(start_button_, 0, 0);
-  ctrl_layout->addWidget(restart_button_, 0, 1);
-  ctrl_layout->addWidget(cancel_button_, 1, 0);
-  ctrl_layout->addWidget(clear_button_, 1, 1);
+
+  mode_selector_ = new QComboBox;
+  mode_selector_->addItem("Follow Waypoints (stop at each)",
+    static_cast<int>(NavMode::FollowWaypoints));
+  mode_selector_->addItem("Navigate Through Poses (continuous)",
+    static_cast<int>(NavMode::NavigateThroughPoses));
+  ctrl_layout->addWidget(new QLabel("Mode:"), 0, 0);
+  ctrl_layout->addWidget(mode_selector_, 0, 1);
+
+  ctrl_layout->addWidget(start_button_, 1, 0);
+  ctrl_layout->addWidget(restart_button_, 1, 1);
+  ctrl_layout->addWidget(cancel_button_, 2, 0);
+  ctrl_layout->addWidget(clear_button_, 2, 1);
 
   main_layout->addLayout(ctrl_layout);
 
@@ -88,6 +95,7 @@ WaypointPanel::WaypointPanel(QWidget * parent)
   connect(cancel_button_, SIGNAL(clicked()), this, SLOT(onCancelNavigation()));
   connect(load_button_, SIGNAL(clicked()), this, SLOT(onLoadWaypoints()));
   connect(export_button_, SIGNAL(clicked()), this, SLOT(onExportWaypoints()));
+  connect(mode_selector_, SIGNAL(currentIndexChanged(int)), this, SLOT(onModeChanged(int)));
 
   status_timer_ = new QTimer(this);
   connect(status_timer_, &QTimer::timeout, this, &WaypointPanel::checkSystemStatus);
@@ -104,27 +112,36 @@ void WaypointPanel::onInitialize()
 
   goal_sub_ = node_->create_subscription<geometry_msgs::msg::PoseStamped>(
     "/waypoint", 10, [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
-      if (!canEditWaypoints()) {
-        return;
-      }
       waypoints_.push_back(*msg);
       updateWaypointList();
       updateMarkers();
     });
 
   marker_pub_ = node_->create_publisher<visualization_msgs::msg::MarkerArray>("waypoint_markers", 10);
-  action_client_ = rclcpp_action::create_client<nav2_msgs::action::NavigateThroughPoses>(node_, "navigate_through_poses");
+  action_client_ = rclcpp_action::create_client<nav2_msgs::action::FollowWaypoints>(node_, "follow_waypoints");
+  ntp_action_client_ = rclcpp_action::create_client<nav2_msgs::action::NavigateThroughPoses>(node_, "navigate_through_poses");
 
   // Subscribe to generic nav info (using navigate_to_pose feedback as a proxy for stats)
-  nav_feedback_sub_ = node_->create_subscription<nav2_msgs::action::NavigateThroughPoses::Impl::FeedbackMessage>(
-    "navigate_through_poses/_action/feedback", 10,
-    [this](const nav2_msgs::action::NavigateThroughPoses::Impl::FeedbackMessage::SharedPtr msg) {
+  nav_feedback_sub_ = node_->create_subscription<nav2_msgs::action::NavigateToPose::Impl::FeedbackMessage>(
+    "navigate_to_pose/_action/feedback", 10, 
+    [this](const nav2_msgs::action::NavigateToPose::Impl::FeedbackMessage::SharedPtr msg) {
       updateDashboard(msg->feedback);
     });
 }
 
+void WaypointPanel::updateDashboard(const nav2_msgs::action::NavigateToPose::Feedback & fb)
+{
+  eta_val_->setText(QString("%1 s").arg(rclcpp::Duration(fb.estimated_time_remaining).seconds(), 0, 'f', 0));
+  dist_rem_val_->setText(QString("%1 m").arg(fb.distance_remaining, 0, 'f', 2));
+  time_taken_val_->setText(QString("%1 s").arg(rclcpp::Duration(fb.navigation_time).seconds(), 0, 'f', 0));
+  recoveries_val_->setText(QString::number(fb.number_of_recoveries));
+}
+
 void WaypointPanel::updateDashboard(const nav2_msgs::action::NavigateThroughPoses::Feedback & fb)
 {
+  // NTP feedback carries the same dashboard fields as NavigateToPose::Feedback.
+  // bt_navigator does not publish on navigate_to_pose/_action/feedback while
+  // running navigate_through_poses, so the dashboard must be fed from here.
   eta_val_->setText(QString("%1 s").arg(rclcpp::Duration(fb.estimated_time_remaining).seconds(), 0, 'f', 0));
   dist_rem_val_->setText(QString("%1 m").arg(fb.distance_remaining, 0, 'f', 2));
   time_taken_val_->setText(QString("%1 s").arg(rclcpp::Duration(fb.navigation_time).seconds(), 0, 'f', 0));
@@ -135,16 +152,6 @@ void WaypointPanel::checkSystemStatus()
 {
   // If we haven't received feedback for 2 seconds, assume inactive
   // This is a safety fallback for the UI
-}
-
-bool WaypointPanel::canEditWaypoints()
-{
-  if (!is_navigating_ && !current_goal_handle_) {
-    return true;
-  }
-
-  feedback_val_->setText("Stop navigation before editing waypoints");
-  return false;
 }
 
 void WaypointPanel::onExportWaypoints()
@@ -163,8 +170,6 @@ void WaypointPanel::onExportWaypoints()
 
 void WaypointPanel::onLoadWaypoints()
 {
-  if (!canEditWaypoints()) return;
-
   QString fileName = QFileDialog::getOpenFileName(this, "Load Waypoints", "", "Text Files (*.txt);;CSV Files (*.csv)");
   if (fileName.isEmpty()) return;
 
@@ -198,11 +203,34 @@ void WaypointPanel::onStartNavigation()
   if (waypoints_.empty()) return;
 
   // Cancel any existing goal before starting a new one
-  if (current_goal_handle_) {
-    action_client_->async_cancel_goal(current_goal_handle_);
+  cancelActiveGoal();
+
+  selected_mode_ = static_cast<NavMode>(mode_selector_->currentData().toInt());
+  active_mode_ = selected_mode_;
+
+  std::vector<geometry_msgs::msg::PoseStamped> poses;
+  if (selected_mode_ == NavMode::NavigateThroughPoses) {
+    // NTP: resume from the last unpassed pose (skip poses already passed in the
+    // previous run). ntp_passed_count_ is maintained by the NTP feedback callback.
+    uint32_t start = std::min(ntp_passed_count_, static_cast<uint32_t>(waypoints_.size()));
+    poses.assign(waypoints_.begin() + start, waypoints_.end());
+    if (poses.empty()) {
+      // All poses already passed -> restart from the beginning.
+      ntp_passed_count_ = 0;
+      poses = waypoints_;
+    }
+    sendNavigateThroughPoses(poses);
+    return;
   }
-  
-  std::vector<geometry_msgs::msg::PoseStamped> poses = waypoints_;
+
+  // FollowWaypoints: resume from the current waypoint index.
+  if (current_waypoint_index_ < waypoints_.size()) {
+    poses.assign(waypoints_.begin() + current_waypoint_index_, waypoints_.end());
+  } else {
+    poses = waypoints_;
+    current_waypoint_index_ = 0;
+  }
+  nav_start_index_ = current_waypoint_index_;
   sendWaypointGoal(poses);
 }
 
@@ -210,13 +238,20 @@ void WaypointPanel::onStartNavigation()
 void WaypointPanel::onRestartNavigation()
 {
   if (waypoints_.empty()) return;
-  
-  // Cancel existing goal
-  if (current_goal_handle_) {
-    action_client_->async_cancel_goal(current_goal_handle_);
-  }
 
-  sendWaypointGoal(waypoints_);
+  // Cancel existing goal
+  cancelActiveGoal();
+
+  current_waypoint_index_ = 0;
+  nav_start_index_ = 0;
+  ntp_passed_count_ = 0;
+  selected_mode_ = static_cast<NavMode>(mode_selector_->currentData().toInt());
+  active_mode_ = selected_mode_;
+  if (selected_mode_ == NavMode::NavigateThroughPoses) {
+    sendNavigateThroughPoses(waypoints_);
+  } else {
+    sendWaypointGoal(waypoints_);
+  }
 }
 
 
@@ -227,11 +262,10 @@ void WaypointPanel::sendWaypointGoal(const std::vector<geometry_msgs::msg::PoseS
     return;
   }
 
-  auto goal_msg = nav2_msgs::action::NavigateThroughPoses::Goal();
+  auto goal_msg = nav2_msgs::action::FollowWaypoints::Goal();
   goal_msg.poses = poses;
 
-  const auto goal_pose_count = poses.size();
-  auto opts = rclcpp_action::Client<nav2_msgs::action::NavigateThroughPoses>::SendGoalOptions();
+  auto opts = rclcpp_action::Client<nav2_msgs::action::FollowWaypoints>::SendGoalOptions();
   opts.goal_response_callback = [this](auto handle) {
     if (!handle) { 
       feedback_val_->setText("Rejected"); 
@@ -245,7 +279,7 @@ void WaypointPanel::sendWaypointGoal(const std::vector<geometry_msgs::msg::PoseS
       nav_status_val_->setText("<font color=green>active</font>"); 
     }
   };
-  opts.result_callback = [this](const rclcpp_action::ClientGoalHandle<nav2_msgs::action::NavigateThroughPoses>::WrappedResult & result) {
+  opts.result_callback = [this](const rclcpp_action::ClientGoalHandle<nav2_msgs::action::FollowWaypoints>::WrappedResult & result) { 
     is_navigating_ = false; 
     current_goal_handle_ = nullptr; 
     nav_status_val_->setText("inactive");
@@ -253,6 +287,7 @@ void WaypointPanel::sendWaypointGoal(const std::vector<geometry_msgs::msg::PoseS
     switch (result.code) {
       case rclcpp_action::ResultCode::SUCCEEDED:
         feedback_val_->setText("Finished");
+        current_waypoint_index_ = 0;
         // Reset highlights
         for (int i = 0; i < waypoint_list_->count(); ++i) waypoint_list_->item(i)->setBackground(Qt::transparent);
         break;
@@ -267,16 +302,15 @@ void WaypointPanel::sendWaypointGoal(const std::vector<geometry_msgs::msg::PoseS
         break;
     }
   };
-  opts.feedback_callback = [this, goal_pose_count](auto, auto fb) {
+  opts.feedback_callback = [this](auto, auto fb) {
     is_navigating_ = true;
     nav_status_val_->setText("<font color=green>active</font>");
-    const auto poses_remaining = static_cast<size_t>(std::max<int32_t>(fb->number_of_poses_remaining, 0));
-    const auto active_offset = goal_pose_count > poses_remaining ? goal_pose_count - poses_remaining : 0;
-    feedback_val_->setText(QString("Remaining %1").arg(fb->number_of_poses_remaining));
-
+    current_waypoint_index_ = nav_start_index_ + fb->current_waypoint;
+    feedback_val_->setText(QString("WP %1").arg(current_waypoint_index_ + 1));
+    
     // Highlight the active waypoint in the list (Deep Orange)
     for (int i = 0; i < waypoint_list_->count(); ++i) {
-      if (i == (int)active_offset) {
+      if (i == (int)current_waypoint_index_) {
         waypoint_list_->item(i)->setBackground(QColor(255, 69, 0, 220)); // Deep Orange Red
         waypoint_list_->item(i)->setForeground(Qt::white); // White text
       } else {
@@ -286,25 +320,111 @@ void WaypointPanel::sendWaypointGoal(const std::vector<geometry_msgs::msg::PoseS
     }
 
 
-    poses_rem_val_->setText(QString::number(fb->number_of_poses_remaining));
+    int remaining = waypoints_.size() - (current_waypoint_index_ + 1);
+    poses_rem_val_->setText(QString::number(std::max(0, (int)remaining)));
   };
 
   action_client_->async_send_goal(goal_msg, opts);
 }
 
+void WaypointPanel::sendNavigateThroughPoses(const std::vector<geometry_msgs::msg::PoseStamped>& poses)
+{
+  if (!ntp_action_client_->wait_for_action_server(std::chrono::seconds(2))) {
+    feedback_val_->setText("No NTP Server");
+    return;
+  }
+
+  auto goal_msg = nav2_msgs::action::NavigateThroughPoses::Goal();
+  goal_msg.poses = poses;
+  // behavior_tree left empty so bt_navigator uses its default NTP behavior tree.
+
+  auto opts = rclcpp_action::Client<nav2_msgs::action::NavigateThroughPoses>::SendGoalOptions();
+  opts.goal_response_callback = [this](auto handle) {
+    if (!handle) {
+      feedback_val_->setText("Rejected");
+      is_navigating_ = false;
+      nav_status_val_->setText("inactive");
+    } else {
+      feedback_val_->setText("Accepted");
+      ntp_goal_handle_ = handle;
+      active_mode_ = NavMode::NavigateThroughPoses;
+      is_navigating_ = true;
+      nav_status_val_->setText("<font color=green>active</font>");
+    }
+  };
+  opts.result_callback = [this](const rclcpp_action::ClientGoalHandle<nav2_msgs::action::NavigateThroughPoses>::WrappedResult & result) {
+    is_navigating_ = false;
+    ntp_goal_handle_ = nullptr;
+    nav_status_val_->setText("inactive");
+
+    switch (result.code) {
+      case rclcpp_action::ResultCode::SUCCEEDED:
+        feedback_val_->setText("Finished");
+        current_waypoint_index_ = 0;
+        ntp_passed_count_ = 0;
+        // Reset highlights
+        for (int i = 0; i < waypoint_list_->count(); ++i) {
+          waypoint_list_->item(i)->setBackground(Qt::transparent);
+          waypoint_list_->item(i)->setForeground(Qt::black);
+        }
+        break;
+      case rclcpp_action::ResultCode::CANCELED:
+        feedback_val_->setText("Canceled");
+        break;
+      case rclcpp_action::ResultCode::ABORTED:
+        feedback_val_->setText("Aborted");
+        break;
+      default:
+        feedback_val_->setText("Stopped");
+        break;
+    }
+  };
+  opts.feedback_callback = [this](auto, auto fb) {
+    is_navigating_ = true;
+    nav_status_val_->setText("<font color=green>active</font>");
+    active_mode_ = NavMode::NavigateThroughPoses;
+
+    // Feed the dashboard from NTP feedback (same fields as NavigateToPose::Feedback).
+    updateDashboard(*fb);
+
+    // Track passed poses so Start Nav can resume from the last unpassed pose.
+    // number_of_poses_remaining counts goals still to reach in the BT's pruned
+    // list; passed = total sent this batch - remaining.
+    ntp_passed_count_ = static_cast<uint32_t>(
+      std::max(0, static_cast<int>(waypoints_.size()) -
+      static_cast<int>(fb->number_of_poses_remaining)));
+    if (ntp_passed_count_ > waypoints_.size()) ntp_passed_count_ = waypoints_.size();
+
+    poses_rem_val_->setText(QString::number(fb->number_of_poses_remaining));
+    feedback_val_->setText(QString("NTP %1 m").arg(fb->distance_remaining, 0, 'f', 2));
+
+    // NTP has no per-waypoint index; highlight the whole list with a light accent
+    // to signal that a continuous path is active (no fake single-item cursor).
+    for (int i = 0; i < waypoint_list_->count(); ++i) {
+      waypoint_list_->item(i)->setBackground(QColor(100, 149, 237, 120));  // cornflower blue
+      waypoint_list_->item(i)->setForeground(Qt::black);
+    }
+  };
+
+  ntp_action_client_->async_send_goal(goal_msg, opts);
+}
+
 void WaypointPanel::onClearWaypoints()
 {
-  if (!canEditWaypoints()) return;
-
   waypoints_.clear();
   waypoint_list_->clear();
+  current_waypoint_index_ = 0;
+  ntp_passed_count_ = 0;
   updateMarkers();
   feedback_val_->setText("Cleared");
 }
 
 void WaypointPanel::onCancelNavigation()
 {
-  if (current_goal_handle_) {
+  if (active_mode_ == NavMode::NavigateThroughPoses && ntp_goal_handle_) {
+    feedback_val_->setText("Stopping...");
+    ntp_action_client_->async_cancel_goal(ntp_goal_handle_);
+  } else if (current_goal_handle_) {
     feedback_val_->setText("Stopping...");
     action_client_->async_cancel_goal(current_goal_handle_);
   } else {
@@ -312,6 +432,28 @@ void WaypointPanel::onCancelNavigation()
     nav_status_val_->setText("inactive");
     feedback_val_->setText("No active goal");
   }
+}
+
+void WaypointPanel::cancelActiveGoal()
+{
+  if (active_mode_ == NavMode::NavigateThroughPoses && ntp_goal_handle_) {
+    ntp_action_client_->async_cancel_goal(ntp_goal_handle_);
+  } else if (current_goal_handle_) {
+    action_client_->async_cancel_goal(current_goal_handle_);
+  }
+}
+
+void WaypointPanel::onModeChanged(int /*index*/)
+{
+  // Block switching while a navigation goal is in flight; the user must Stop first.
+  if (is_navigating_) {
+    mode_selector_->blockSignals(true);
+    mode_selector_->setCurrentIndex(active_mode_ == NavMode::NavigateThroughPoses ? 1 : 0);
+    mode_selector_->blockSignals(false);
+    feedback_val_->setText("Stop nav before switching mode");
+    return;
+  }
+  selected_mode_ = static_cast<NavMode>(mode_selector_->currentData().toInt());
 }
 
 
@@ -357,8 +499,6 @@ void WaypointPanel::showContextMenu(const QPoint & pos)
 
 void WaypointPanel::onMoveWaypointUp()
 {
-  if (!canEditWaypoints()) return;
-
   int currentRow = waypoint_list_->currentRow();
   if (currentRow > 0 && currentRow < (int)waypoints_.size()) {
     std::swap(waypoints_[currentRow], waypoints_[currentRow - 1]);
@@ -371,8 +511,6 @@ void WaypointPanel::onMoveWaypointUp()
 
 void WaypointPanel::onMoveWaypointDown()
 {
-  if (!canEditWaypoints()) return;
-
   int currentRow = waypoint_list_->currentRow();
   if (currentRow >= 0 && currentRow < (int)waypoints_.size() - 1) {
     std::swap(waypoints_[currentRow], waypoints_[currentRow + 1]);
@@ -385,8 +523,6 @@ void WaypointPanel::onMoveWaypointDown()
 
 void WaypointPanel::onDeleteWaypoint()
 {
-  if (!canEditWaypoints()) return;
-
   int currentRow = waypoint_list_->currentRow();
   if (currentRow >= 0 && currentRow < (int)waypoints_.size()) {
     waypoints_.erase(waypoints_.begin() + currentRow);

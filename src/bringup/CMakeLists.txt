@@ -23,7 +23,7 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
-install(DIRECTORY launch map config rviz
+install(DIRECTORY launch map config rviz behavior_tree
   DESTINATION share/${PROJECT_NAME}
 )
 

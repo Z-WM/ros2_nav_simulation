@@ -35,7 +35,7 @@ def generate_launch_description():
     declare_map_yaml_cmd = DeclareLaunchArgument(
         "map",
         default_value=[
-            TextSubstitution(text=os.path.join(bringup_dir, "map",  "RMUC2026.yaml")),
+            TextSubstitution(text=os.path.join(bringup_dir, "map",  "test.yaml")),
         ],
         description="Full path to map file to load",
     )
@@ -87,6 +87,7 @@ def generate_launch_description():
                 ]),
                 launch_arguments={'use_sim_time': use_sim_time}.items()
             ),
+
         IncludeLaunchDescription(
                 launch_description_source=PythonLaunchDescriptionSource([
                     PathJoinSubstitution([
@@ -98,15 +99,26 @@ def generate_launch_description():
                 launch_arguments={'use_sim_time': use_sim_time}.items()
             ),
 
-        IncludeLaunchDescription(
-                launch_description_source=PythonLaunchDescriptionSource([
-                    PathJoinSubstitution([
-                        FindPackageShare('decision_executor'),
-                        'launch',
-                        'decision_executor.launch.py'
-                    ])
-                ]),
-            ),
+        # IncludeLaunchDescription(
+        #         launch_description_source=PythonLaunchDescriptionSource([
+        #             PathJoinSubstitution([
+        #                 FindPackageShare('super_lio'),
+        #                 'launch',
+        #                 'Livox_mid360.launch.py'
+        #             ])
+        #         ]),
+        #         launch_arguments={'use_sim_time': use_sim_time}.items()
+        #     ),
+            
+        # IncludeLaunchDescription(
+        #         launch_description_source=PythonLaunchDescriptionSource([
+        #             PathJoinSubstitution([
+        #                 FindPackageShare('decision_executor'),
+        #                 'launch',
+        #                 'decision_executor.launch.py'
+        #             ])
+        #         ]),
+        #     ),
 
         IncludeLaunchDescription(
                 launch_description_source=PythonLaunchDescriptionSource([
@@ -117,6 +129,18 @@ def generate_launch_description():
                     ])
                 ]),
             ),
+
+        # rosbridge_server: websocket bridge so the visual-decision-editor web UI
+        # can subscribe to /referee & /odom and publish nav goals / cmd_vel / params.
+        # Requires: sudo apt install ros-humble-rosbridge-suite
+        # Navigation is driven by publishing /goal_pose (not the rosbridge action
+        # protocol), so send_action_goals_in_new_thread is left at its default.
+        Node(
+            package='rosbridge_server',
+            executable='rosbridge_websocket',
+            name='rosbridge_websocket',
+            output='screen',
+        ),
 
     Node(
         package="rviz2",

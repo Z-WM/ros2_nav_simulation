@@ -71,7 +71,7 @@ controller_server:
     min_y_velocity_threshold: 0.05
     min_theta_velocity_threshold: 0.1
     failure_tolerance: 1.0 # The maximum duration in seconds the called controller plugin can fail
-    odom_topic: "odom"
+    odom_topic: "/lio/odom"
     progress_checker_plugin: "progress_checker"
     goal_checker_plugins: ["general_goal_checker"] 
     controller_plugins: ["FollowPath"]
