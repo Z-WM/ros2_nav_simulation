@@ -1,0 +1,51 @@
+/**:
+  ros__parameters:
+    # 作为 NDT/ICP 目标加载的 PCD 地图路径。留空时默认使用随包发布的
+    # <package_share>/map/map.pcd。
+    relocalization.map_path: ""
+    relocalization.map_frame: "map"
+
+    # 来自外部 LIO + 传感器的输入话题
+    relocalization.lidar_topic: "/livox/lidar/pointcloud"
+    relocalization.imu_topic: "/livox/imu"
+    relocalization.odom_topic: "/odom"          # 外部 LIO 里程计(跟踪源)
+    relocalization.odom_frame: "odom"
+    relocalization.base_frame: "base_footprint"
+    # 输出话题
+    relocalization.pose_topic: "/relocalization/pose"
+    relocalization.global_map_topic: "/relocalization/global_map"
+    relocalization.publish_global_map: true
+
+    # 默认初始位姿猜测 [x, y, z, roll(deg), pitch(deg), yaw(deg)]
+    # 在尚未收到 /initialpose 时使用。收到 /initialpose 时 z 会被强制为 0.2
+    relocalization.init_pose: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+    # 重力对齐(IMU 仅用于构造初始猜测的旋转)
+    relocalization.gravity_norm: 9.7946
+
+    # 配准前对输入扫描做体素降采样的边长
+    relocalization.voxel_leaf_size: 0.5
+
+    # 累积阈值
+    relocalization.need_init_frames: 10
+    relocalization.need_imu_samples: 20
+
+    # NDT + ICP 配准参数
+    relocalization.ndt_resolution: 1.0
+    relocalization.ndt_transformation_epsilon: 0.0001
+    relocalization.ndt_fitness_epsilon: 0.0001
+    relocalization.ndt_max_iterations: 25
+    relocalization.icp_max_correspondence_distance: 4.0
+    relocalization.icp_max_iterations: 40
+    relocalization.icp_transformation_epsilon: 0.0001
+    relocalization.icp_fitness_epsilon: 0.0001
+    relocalization.icp_ransac_iterations: 0
+
+    # 收敛门限(fitness > 阈值 => 重置重试)
+    relocalization.fitness_threshold: 1.5
+
+    # 跟踪期间按此周期(秒)重新广播 map->odom TF
+    relocalization.tf_publish_period: 0.05
+
+    # 加载的 PCD 所在的地图坐标系(= map_frame)
+    relocalization.global_map_frame: "map"
